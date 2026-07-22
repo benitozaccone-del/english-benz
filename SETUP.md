@@ -67,7 +67,7 @@ This is the only paid step; the browser app itself makes no Claude API calls.
 
 ## 6. The app is wired to Supabase
 
-`english-benz_v2.html` already has your Project URL and anon key in the `EB_CONFIG`
+`index.html` already has your Project URL and anon key in the `EB_CONFIG`
 block near the top of its `<script>`. On load it shows a **Sign in / Create account**
 screen; once signed in, all four games run, exercises come from the database
 (least-seen-first per user), "times seen" is tracked per exercise, and every stat
@@ -77,7 +77,7 @@ offline packs.
 > If you edit `db/schema.sql` (it gained a `kv` table for stats sync), re-run the
 > whole file in the SQL editor — it's safe to re-run.
 
-**Test it:** open `english-benz_v2.html` in a browser, create an account, and play a
+**Test it:** open `index.html` in a browser, create an account, and play a
 round. Then open it in a different browser / device, sign in with the same account,
 and confirm your stats are there.
 

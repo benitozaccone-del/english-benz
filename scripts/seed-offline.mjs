@@ -1,7 +1,7 @@
 // English Benz — seed the built-in offline packs into Supabase.
 //
 // Reliable, free, no Claude API: reads the TR_FALLBACK / AUDIO_FALLBACK packs
-// straight out of english-benz_v2.html (the single source of truth) and inserts
+// straight out of index.html (the single source of truth) and inserts
 // them into the `exercises` table, deduped. Gives the app real content instantly.
 //
 //   cd scripts
@@ -43,7 +43,7 @@ function extractLiteral(src, marker, open, close) {
   return src.slice(start, j);
 }
 
-const html = readFileSync(join(here, '..', 'english-benz_v2.html'), 'utf8');
+const html = readFileSync(join(here, '..', 'index.html'), 'utf8');
 // eslint-disable-next-line no-eval
 const TR_FALLBACK = eval('(' + extractLiteral(html, 'var TR_FALLBACK', '{', '}') + ')');
 // eslint-disable-next-line no-eval

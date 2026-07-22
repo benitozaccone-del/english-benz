@@ -50,7 +50,7 @@ New modules can be added whenever they improve the product.
 The app moved from a claude.ai Artifact to a self-contained page backed by
 **Supabase** (free Postgres + Auth):
 
--   `english-benz_v2.html` — the whole app, one standalone HTML file. Signs users
+-   `index.html` — the whole app, one standalone HTML file. Signs users
     in with email/password (`EB_CONFIG` holds the Supabase URL + anon key).
 -   `db/schema.sql` — tables and row-level security. `exercises` is the shared
     content repository; `presentations` tracks per-user "times seen" per exercise;
