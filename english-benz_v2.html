@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
 <style>
   html,body{margin:0; padding:0;}
   body{background:#FAFAF7; min-height:100vh; -webkit-text-size-adjust:100%;}
@@ -220,7 +221,23 @@
     </button>
   </div>
   <button class="stats-link" id="stats-open">See my stats <span>→</span></button>
+  <button class="signout-link" id="admin-open" style="display:none;">⚙ Admin · generate from a document</button>
   <button class="signout-link" id="sign-out" style="display:none;">Sign out</button>
+</div>
+
+<div id="view-admin" style="display:none;">
+  <button class="back-btn" id="admin-back">← Menu</button>
+  <h1 class="h1" style="font-size:2rem; margin-bottom:0.3rem;">Admin · <em>generate</em></h1>
+  <p class="lede">Upload a PDF. New exercises are generated from its content and added to the shared pool for everyone.</p>
+  <div class="auth-card">
+    <input id="admin-file" type="file" accept="application/pdf" />
+    <label style="font-size:13px; color:#5A5A5A; font-family:'Instrument Sans',sans-serif; display:flex; align-items:center; gap:8px;">
+      Exercises per level/type
+      <input id="admin-count" type="number" min="1" max="15" value="6" style="width:64px;" />
+    </label>
+    <button class="auth-primary" id="admin-generate">Generate exercises</button>
+    <p class="auth-msg" id="admin-log" style="color:#0A0A0A;"></p>
+  </div>
 </div>
 
 <div id="view-pv" style="display:none;">
@@ -271,6 +288,8 @@ var EB_CONFIG = {
   url:  "https://wuokrwnbtepcpyhisoqs.supabase.co",
   anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1b2tyd25idGVwY3B5aGlzb3FzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MzEyMzgsImV4cCI6MjEwMDMwNzIzOH0.FjACSoYQEES-afgUsXZVuNH_Rc3Be4AseYBLTbdG43o"
 };
+// Only this account sees the Admin panel (the Edge Function enforces it too).
+var EB_ADMIN_EMAIL = "benitozaccone@intuendi.com";
 
 var ebSB = (EB_CONFIG.url && EB_CONFIG.anon && window.supabase)
   ? window.supabase.createClient(EB_CONFIG.url, EB_CONFIG.anon)
@@ -406,7 +425,7 @@ function renderBlank(s){
   });
 }
 function showView(id){
-  ['view-auth','view-menu','view-pv','view-tr','view-stats','view-audio'].forEach(function(v){ document.getElementById(v).style.display = (v===id) ? 'block' : 'none'; });
+  ['view-auth','view-menu','view-admin','view-pv','view-tr','view-stats','view-audio'].forEach(function(v){ document.getElementById(v).style.display = (v===id) ? 'block' : 'none'; });
 }
 
 /* ---------- phrasal verbs data ----------
@@ -1163,6 +1182,8 @@ document.querySelectorAll('.menu-btn').forEach(function(btn){
 function ebSetMsg(t){ var m = document.getElementById('auth-msg'); if(m){ m.textContent = t || ''; } }
 function ebRoute(){
   var so = document.getElementById('sign-out');
+  var ad = document.getElementById('admin-open');
+  if(ad) ad.style.display = (ebUser && ebUser.email === EB_ADMIN_EMAIL) ? 'inline-flex' : 'none';
   if(ebUser){
     if(so) so.style.display = 'inline-flex';
     showView('view-menu');
@@ -1171,6 +1192,50 @@ function ebRoute(){
     showView(ebSB ? 'view-auth' : 'view-menu');   // no Supabase configured -> offline, straight to menu
   }
 }
+
+/* ---------- admin: generate exercises from a PDF ---------- */
+if(window.pdfjsLib){
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+}
+async function extractPdfText(file){
+  var buf = await file.arrayBuffer();
+  var pdf = await window.pdfjsLib.getDocument({ data: buf }).promise;
+  var out = [];
+  for(var p=1; p<=pdf.numPages; p++){
+    var page = await pdf.getPage(p);
+    var tc = await page.getTextContent();
+    out.push(tc.items.map(function(it){ return it.str; }).join(' '));
+  }
+  return out.join('\n');
+}
+async function adminGenerate(){
+  var log = document.getElementById('admin-log');
+  var f = document.getElementById('admin-file').files[0];
+  var count = parseInt(document.getElementById('admin-count').value, 10) || 6;
+  if(!ebSB || !window.pdfjsLib){ log.textContent = 'This needs a live connection.'; return; }
+  if(!f){ log.textContent = 'Choose a PDF first.'; return; }
+  log.textContent = 'Reading PDF…';
+  var text;
+  try { text = await extractPdfText(f); }
+  catch(e){ log.textContent = 'Could not read that PDF: ' + e.message; return; }
+  if(!text.trim()){ log.textContent = 'No selectable text found — is it a scanned image rather than a text PDF?'; return; }
+  log.textContent = 'Generating from ' + Math.round(text.length/1000) + 'k characters… this can take a minute.';
+  try {
+    var sess = await ebSB.auth.getSession();
+    var token = (sess.data && sess.data.session) ? sess.data.session.access_token : '';
+    var res = await fetch(EB_CONFIG.url + '/functions/v1/generate-exercises', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'authorization': 'Bearer ' + token, 'apikey': EB_CONFIG.anon },
+      body: JSON.stringify({ text: text, count: count })
+    });
+    var data = await res.json().catch(function(){ return {}; });
+    if(!res.ok){ log.textContent = 'Error: ' + (data.error || ('HTTP ' + res.status)); return; }
+    log.textContent = 'Done — added ' + data.inserted + ' new exercises (of ' + data.generated + ' generated; duplicates skipped).';
+  } catch(e){ log.textContent = 'Request failed: ' + e.message; }
+}
+document.getElementById('admin-open').onclick = function(){ showView('view-admin'); };
+document.getElementById('admin-back').onclick = function(){ showView('view-menu'); };
+document.getElementById('admin-generate').onclick = adminGenerate;
 if(ebSB){
   document.getElementById('auth-signin').onclick = async function(){
     ebSetMsg('');

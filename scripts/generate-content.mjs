@@ -39,7 +39,8 @@ if (!ANTHROPIC_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 const BATCH = Math.max(1, Math.min(parseInt(process.argv[2] || '8', 10) || 8, 20));
 const MODEL = 'claude-sonnet-5'; // balance of quality and cost for exercise generation
 
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
+// Fail fast: a single web-search request should never hang for minutes.
+const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY, timeout: 120000, maxRetries: 1 });
 const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 
 const LEVEL_DESC = {
@@ -50,10 +51,10 @@ const LEVEL_DESC = {
 
 // ---- Claude call with web search + pause_turn handling ---------------------
 async function generate(systemPrompt) {
-  const tools = [{ type: 'web_search_20260209', name: 'web_search' }];
+  const tools = [{ type: 'web_search_20250305', name: 'web_search' }];
   const messages = [{ role: 'user', content: 'Generate the exercise batch now.' }];
 
-  for (let step = 0; step < 6; step++) {
+  for (let step = 0; step < 4; step++) {
     const res = await anthropic.messages.create({
       model: MODEL,
       max_tokens: 1500,
