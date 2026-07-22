@@ -65,13 +65,24 @@ node generate-content.mjs 12   # or a bigger batch
 Re-run it any time you want more content — duplicates are skipped automatically.
 This is the only paid step; the browser app itself makes no Claude API calls.
 
-## 6. Point the app at Supabase
+## 6. The app is wired to Supabase
 
-*(Coming next — the app's storage/auth layer needs the **Project URL** and **anon**
-key wired in, plus a login screen. Tell Claude once your project exists and I'll
-finish this step and hand you the exact two values to paste.)*
+`english-benz_v2.html` already has your Project URL and anon key in the `EB_CONFIG`
+block near the top of its `<script>`. On load it shows a **Sign in / Create account**
+screen; once signed in, all four games run, exercises come from the database
+(least-seen-first per user), "times seen" is tracked per exercise, and every stat
+syncs across your devices. With no connection it falls back to the built-in
+offline packs.
+
+> If you edit `db/schema.sql` (it gained a `kv` table for stats sync), re-run the
+> whole file in the SQL editor — it's safe to re-run.
+
+**Test it:** open `english-benz_v2.html` in a browser, create an account, and play a
+round. Then open it in a different browser / device, sign in with the same account,
+and confirm your stats are there.
 
 ## 7. Publish (GitHub Pages)
 
-Once the app is wired up, we push the repo to GitHub and enable **Pages** for a
-public URL. Details when we get there.
+Push the repo to GitHub and enable **Pages** for a public URL — details when we get
+there. The anon key in the file is safe to publish; row-level security protects the
+data.

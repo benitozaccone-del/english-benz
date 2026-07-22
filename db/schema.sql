@@ -64,6 +64,16 @@ create table if not exists public.activity_events (
 create index if not exists activity_events_user_idx
   on public.activity_events (user_id, created_at desc);
 
+-- Generic per-user key-value store. Backs the app's score/topic/activity/queue
+-- blobs so the existing game logic syncs across devices without change.
+create table if not exists public.kv (
+  user_id     uuid not null references auth.users (id) on delete cascade,
+  key         text not null,
+  value       jsonb,
+  updated_at  timestamptz not null default now(),
+  primary key (user_id, key)
+);
+
 -- ---------------------------------------------------------------------------
 -- Row-level security
 --   exercises        : any signed-in user may read; only the service role writes
@@ -74,6 +84,7 @@ alter table public.exercises        enable row level security;
 alter table public.user_stats       enable row level security;
 alter table public.presentations    enable row level security;
 alter table public.activity_events  enable row level security;
+alter table public.kv               enable row level security;
 
 drop policy if exists exercises_read on public.exercises;
 create policy exercises_read on public.exercises
@@ -91,6 +102,11 @@ create policy presentations_own on public.presentations
 
 drop policy if exists activity_own on public.activity_events;
 create policy activity_own on public.activity_events
+  for all to authenticated
+  using (user_id = auth.uid()) with check (user_id = auth.uid());
+
+drop policy if exists kv_own on public.kv;
+create policy kv_own on public.kv
   for all to authenticated
   using (user_id = auth.uid()) with check (user_id = auth.uid());
 

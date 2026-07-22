@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   html,body{margin:0; padding:0;}
   body{background:#FAFAF7; min-height:100vh; -webkit-text-size-adjust:100%;}
@@ -139,6 +140,17 @@
   .error-box{font-size:14px; color:#0A0A0A; background:#FFC9B5; border:1.5px solid #0A0A0A; border-radius:18px; padding:1rem;}
   .sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0);}
 
+  .auth-card{display:flex; flex-direction:column; gap:12px; max-width:340px;}
+  .auth-card input{font-family:'Instrument Sans',sans-serif; font-size:15px; padding:14px 16px; border:1.5px solid #0A0A0A; border-radius:14px; background:#FFFFFF; color:#0A0A0A;}
+  .auth-card input:focus{outline:2px solid #C6F462; outline-offset:1px;}
+  .auth-primary{background:#0A0A0A; color:#FAFAF7; border:none; border-radius:999px; padding:14px; font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:15px; cursor:pointer;}
+  .auth-primary:hover{transform:translateY(-1px);}
+  .auth-secondary{background:#FFFFFF; color:#0A0A0A; border:1.5px solid #0A0A0A; border-radius:999px; padding:12px; font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:14px; cursor:pointer;}
+  .auth-secondary:hover{background:#0A0A0A; color:#FAFAF7;}
+  .auth-msg{font-family:'Instrument Sans',sans-serif; font-size:13px; color:#C22C46; min-height:1.1em; margin:2px 0 0;}
+  .signout-link{display:inline-flex; align-items:center; gap:6px; background:none; border:none; color:#5A5A5A; font-family:'Instrument Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer; margin-top:16px; padding:4px;}
+  .signout-link:hover{color:#0A0A0A;}
+
   @media (max-width:480px){
     .h1{font-size:2rem;}
     .menu-btn .title{font-size:17px;}
@@ -147,7 +159,19 @@
 </style>
 
 <div class="app-inner">
-<div id="view-menu">
+<div id="view-auth" style="display:none;">
+  <div class="eyebrow">English Benz</div>
+  <h1 class="h1">Sign <em>in</em></h1>
+  <p class="lede">Your progress, streaks, and challenge lists sync across every device.</p>
+  <div class="auth-card">
+    <input id="auth-email" type="email" autocomplete="username" placeholder="you@example.com" />
+    <input id="auth-pass" type="password" autocomplete="current-password" placeholder="Password (min 6 characters)" />
+    <button class="auth-primary" id="auth-signin">Sign in</button>
+    <button class="auth-secondary" id="auth-signup">Create account</button>
+    <p class="auth-msg" id="auth-msg"></p>
+  </div>
+</div>
+<div id="view-menu" style="display:none;">
   <div class="eyebrow">English Benz · B2 → C2</div>
   <h1 class="h1">Practice <em>English</em>, one round at a time.</h1>
   <p class="lede">Four games. Real book sentences and today's news. Your progress follows you across devices.</p>
@@ -196,6 +220,7 @@
     </button>
   </div>
   <button class="stats-link" id="stats-open">See my stats <span>→</span></button>
+  <button class="signout-link" id="sign-out" style="display:none;">Sign out</button>
 </div>
 
 <div id="view-pv" style="display:none;">
@@ -238,21 +263,64 @@
 </div>
 
 <script>
-/* ---------- storage shim ----------
-   The claude.ai Artifacts runtime provides window.storage. When the app runs
-   as a plain file or anywhere that runtime is absent, fall back to
-   localStorage so progress and stats still persist. Shape matches the native
-   API: get(key) -> {value} | null ; set(key, value). */
-if(!window.storage){
-  window.storage = {
-    get: function(key){
-      try { var v = localStorage.getItem('eb:' + key); return v === null ? null : { value: v }; }
-      catch(e){ return null; }
-    },
-    set: function(key, value){
-      try { localStorage.setItem('eb:' + key, value); } catch(e){}
+/* ---------- Supabase config ----------
+   Fill these from Supabase -> Project Settings -> API. The anon key is safe to
+   ship publicly: row-level security in the database restricts every user to
+   their own rows. Leave both blank to run fully offline (localStorage only). */
+var EB_CONFIG = {
+  url:  "https://wuokrwnbtepcpyhisoqs.supabase.co",
+  anon: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind1b2tyd25idGVwY3B5aGlzb3FzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ3MzEyMzgsImV4cCI6MjEwMDMwNzIzOH0.FjACSoYQEES-afgUsXZVuNH_Rc3Be4AseYBLTbdG43o"
+};
+
+var ebSB = (EB_CONFIG.url && EB_CONFIG.anon && window.supabase)
+  ? window.supabase.createClient(EB_CONFIG.url, EB_CONFIG.anon)
+  : null;
+var ebUser = null;                          // set once the user signs in
+function ebCloud(){ return !!(ebSB && ebUser); }
+
+/* ---------- storage ----------
+   Per-user key-value in Supabase when signed in, localStorage otherwise. All
+   game/stats code awaits these calls, so the async DB path is transparent.
+   Shape matches the original API: get(key) -> {value} | null ; set(key, value). */
+window.storage = {
+  get: async function(key){
+    if(ebCloud()){
+      try {
+        var r = await ebSB.from('kv').select('value').eq('user_id', ebUser.id).eq('key', key).maybeSingle();
+        return (r.data && r.data.value != null) ? { value: r.data.value } : null;
+      } catch(e){ return null; }
     }
-  };
+    try { var v = localStorage.getItem('eb:' + key); return v === null ? null : { value: v }; }
+    catch(e){ return null; }
+  },
+  set: async function(key, value){
+    if(ebCloud()){
+      try { await ebSB.from('kv').upsert({ user_id: ebUser.id, key: key, value: value }, { onConflict: 'user_id,key' }); }
+      catch(e){}
+      return;
+    }
+    try { localStorage.setItem('eb:' + key, value); } catch(e){}
+  }
+};
+
+/* Exercise repository access (structured tables). Returns q objects carrying a
+   hidden _id so an answer can record a "presentation". Null when unavailable,
+   which makes the caller fall back to the built-in offline pack. */
+async function ebFetchExercises(type, level, n){
+  if(!ebCloud()) return null;
+  try {
+    var r = await ebSB.rpc('next_exercises', { p_type: type, p_level: level || '', p_limit: n });
+    if(r.error || !Array.isArray(r.data) || !r.data.length) return null;
+    return r.data.map(function(row){
+      var q = Object.assign({}, row.payload);
+      q._id = row.id;
+      return q;
+    });
+  } catch(e){ return null; }
+}
+async function ebRecord(exerciseId, ok){
+  if(!ebCloud() || !exerciseId) return;
+  try { await ebSB.rpc('record_presentation', { p_exercise: exerciseId, p_correct: !!ok }); } catch(e){}
 }
 
 /* ---------- offline fallback content ----------
@@ -338,7 +406,7 @@ function renderBlank(s){
   });
 }
 function showView(id){
-  ['view-menu','view-pv','view-tr','view-stats','view-audio'].forEach(function(v){ document.getElementById(v).style.display = (v===id) ? 'block' : 'none'; });
+  ['view-auth','view-menu','view-pv','view-tr','view-stats','view-audio'].forEach(function(v){ document.getElementById(v).style.display = (v===id) ? 'block' : 'none'; });
 }
 
 /* ---------- phrasal verbs data ----------
@@ -698,36 +766,11 @@ function trWeakTopicsFor(stats){
 
 async function trFetchBatch(level, weakTopics, count){
   var batchSize = Math.max(1, Math.min(count || TR_BATCH_SIZE, TR_BATCH_SIZE));
-  var topicHint = weakTopics.length ? (" Ideally include one story related to one of these challenging topics: " + weakTopics.join(', ') + ".") : "";
-  var systemPrompt = "You create language-learning exercises for an Italian speaker learning English at CEFR level " + level + ".\n" +
-    "Search the web once for notable news stories published very recently (this week) by BBC, TIME, or The New York Times." + topicHint + "\n" +
-    "Create " + batchSize + " different exercises. For each exercise, pick ONE short verbatim sentence or clause, under 15 words, whose vocabulary and structure matches CEFR level " + level + " complexity (" + LEVEL_DESC[level] + ").\n" +
-    "Return a JSON array of exactly " + batchSize + " objects. Every object must have exactly these fields:\n" +
-    "{\"source\": \"BBC News\" | \"TIME\" | \"The New York Times\", \"topic\": one short lowercase word from [politics, economy, technology, environment, health, sport, culture, science, society], \"english_sentence\": \"the exact short quoted sentence, under 15 words\", \"correct_translation\": \"an accurate, natural Italian translation\", \"distractor_1\": \"a plausible but clearly incorrect Italian translation\", \"distractor_2\": \"another plausible but clearly incorrect Italian translation\"}\n" +
-    "Return ONLY the raw JSON array. No markdown fences, no preamble.";
-  try {
-    var response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-5",
-        max_tokens: 700,
-        system: systemPrompt,
-        messages: [{ role: "user", content: "Generate the exercise batch now." }],
-        tools: [{ type: "web_search_20250305", name: "web_search" }]
-      })
-    });
-    if(!response.ok) throw new Error('HTTP ' + response.status);
-    var data = await response.json();
-    var textBlocks = (data.content || []).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n');
-    var clean = textBlocks.replace(/```json|```/g, '').trim();
-    var m = clean.match(/\[[\s\S]*\]/);
-    var parsed = JSON.parse(m ? m[0] : clean);
-    return Array.isArray(parsed) ? parsed.filter(Boolean).slice(0, batchSize) : [];
-  } catch(err){
-    console.warn('Translation batch fetch failed, using offline pack:', err);
-    return fallbackBatch(TR_FALLBACK[level] || TR_FALLBACK.B2, batchSize);
-  }
+  // Prefer the shared repository (least-seen-first, per user); otherwise the
+  // built-in offline pack keeps the game playable with no connection.
+  var fromDb = await ebFetchExercises('translation', level, batchSize);
+  if(fromDb && fromDb.length) return fromDb;
+  return fallbackBatch(TR_FALLBACK[level] || TR_FALLBACK.B2, batchSize);
 }
 
 async function trTopUpQueue(level){
@@ -818,6 +861,7 @@ function trRender(q){
       if(!trStats.topics[q.topic]) trStats.topics[q.topic] = {correct:0, wrong:0};
       if(ok) trStats.topics[q.topic].correct++; else trStats.topics[q.topic].wrong++;
       await logAttempt('tr', ok);
+      if(q._id) ebRecord(q._id, ok);
       await trSave();
       var kids = el.children;
       for(var i=0;i<kids.length;i++){
@@ -896,35 +940,9 @@ async function audioSaveQueue(){
 
 async function audioFetchBatch(count){
   var batchSize = Math.max(1, Math.min(count || AUDIO_BATCH_SIZE, AUDIO_BATCH_SIZE));
-  var systemPrompt = "You create listening-comprehension exercises for an English learner (B2-C1 level).\n" +
-    "Search the web once for notable news stories published very recently (this week) by BBC, TIME, or The New York Times.\n" +
-    "Create " + batchSize + " different exercises. For each, pick ONE short verbatim sentence under 12 words, clear enough to be read aloud in about 5 seconds. Create two near-identical decoys, each with exactly one word changed.\n" +
-    "Return a JSON array of exactly " + batchSize + " objects with these fields:\n" +
-    "{\"source\": \"BBC News\" | \"TIME\" | \"The New York Times\", \"topic\": one short lowercase word from [politics, economy, technology, environment, health, sport, culture, science, society], \"correct_sentence\": \"the exact short quoted sentence, under 12 words\", \"decoy_1\": \"near-identical sentence with one word changed\", \"decoy_2\": \"near-identical sentence with a different one word changed\"}\n" +
-    "Return ONLY the raw JSON array. No markdown fences, no preamble.";
-  try {
-    var response = await fetch("https://api.anthropic.com/v1/messages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "claude-sonnet-5",
-        max_tokens: 550,
-        system: systemPrompt,
-        messages: [{ role: "user", content: "Generate the listening exercise batch now." }],
-        tools: [{ type: "web_search_20250305", name: "web_search" }]
-      })
-    });
-    if(!response.ok) throw new Error('HTTP ' + response.status);
-    var data = await response.json();
-    var textBlocks = (data.content || []).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n');
-    var clean = textBlocks.replace(/```json|```/g, '').trim();
-    var m = clean.match(/\[[\s\S]*\]/);
-    var parsed = JSON.parse(m ? m[0] : clean);
-    return Array.isArray(parsed) ? parsed.filter(Boolean).slice(0, batchSize) : [];
-  } catch(err){
-    console.warn('Audio batch fetch failed, using offline pack:', err);
-    return fallbackBatch(AUDIO_FALLBACK, batchSize);
-  }
+  var fromDb = await ebFetchExercises('audio', '', batchSize);
+  if(fromDb && fromDb.length) return fromDb;
+  return fallbackBatch(AUDIO_FALLBACK, batchSize);
 }
 
 async function audioTopUpQueue(){
@@ -994,6 +1012,7 @@ function audioRender(q){
       if(ok) audioStats.correct = (audioStats.correct||0)+1; else audioStats.wrong = (audioStats.wrong||0)+1;
       await audioSaveStats(audioStats);
       await logAttempt('audio', ok);
+      if(q._id) ebRecord(q._id, ok);
       var kids = el.children;
       for(var i=0;i<kids.length;i++){
         var b=kids[i]; b.disabled=true;
@@ -1139,6 +1158,48 @@ document.querySelectorAll('.menu-btn').forEach(function(btn){
     else if(mode === 'audio') audioInit();
   };
 });
+
+/* ---------- authentication ---------- */
+function ebSetMsg(t){ var m = document.getElementById('auth-msg'); if(m){ m.textContent = t || ''; } }
+function ebRoute(){
+  var so = document.getElementById('sign-out');
+  if(ebUser){
+    if(so) so.style.display = 'inline-flex';
+    showView('view-menu');
+  } else {
+    if(so) so.style.display = 'none';
+    showView(ebSB ? 'view-auth' : 'view-menu');   // no Supabase configured -> offline, straight to menu
+  }
+}
+if(ebSB){
+  document.getElementById('auth-signin').onclick = async function(){
+    ebSetMsg('');
+    var email = document.getElementById('auth-email').value.trim();
+    var pass = document.getElementById('auth-pass').value;
+    var r = await ebSB.auth.signInWithPassword({ email: email, password: pass });
+    if(r.error) ebSetMsg(r.error.message);
+  };
+  document.getElementById('auth-signup').onclick = async function(){
+    ebSetMsg('');
+    var email = document.getElementById('auth-email').value.trim();
+    var pass = document.getElementById('auth-pass').value;
+    if(pass.length < 6){ ebSetMsg('Password must be at least 6 characters.'); return; }
+    var r = await ebSB.auth.signUp({ email: email, password: pass });
+    if(r.error){ ebSetMsg(r.error.message); return; }
+    if(!(r.data && r.data.session)) ebSetMsg('Account created. Check your email to confirm, then sign in.');
+  };
+  document.getElementById('sign-out').onclick = async function(){ await ebSB.auth.signOut(); };
+  ebSB.auth.onAuthStateChange(function(_event, session){
+    ebUser = session ? session.user : null;
+    ebRoute();
+  });
+  ebSB.auth.getSession().then(function(r){
+    ebUser = (r.data && r.data.session) ? r.data.session.user : null;
+    ebRoute();
+  });
+} else {
+  ebRoute();   // offline mode
+}
 </script>
 </body>
 </html>

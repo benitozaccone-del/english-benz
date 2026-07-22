@@ -45,6 +45,26 @@ Current major modules:
 
 New modules can be added whenever they improve the product.
 
+## Backend (added after the Artifacts phase)
+
+The app moved from a claude.ai Artifact to a self-contained page backed by
+**Supabase** (free Postgres + Auth):
+
+-   `english-benz_v2.html` — the whole app, one standalone HTML file. Signs users
+    in with email/password (`EB_CONFIG` holds the Supabase URL + anon key).
+-   `db/schema.sql` — tables and row-level security. `exercises` is the shared
+    content repository; `presentations` tracks per-user "times seen" per exercise;
+    `kv` backs the score/activity/queue blobs so existing game logic syncs with no
+    change. RPCs: `next_exercises` (least-seen-first) and `record_presentation`.
+-   `scripts/generate-content.mjs` — local pipeline; generates exercises via the
+    Claude API (Sonnet 5 + web search) and inserts them. The **only** component
+    that holds an API key. The browser app never calls the Claude API — it reads
+    exercises from the database and falls back to built-in offline packs when
+    offline or signed out.
+
+The app degrades gracefully: with `EB_CONFIG` blank (or no connection) it runs
+fully offline on `localStorage`.
+
 ------------------------------------------------------------------------
 
 # Engineering Principles
