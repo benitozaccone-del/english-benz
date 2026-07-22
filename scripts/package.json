@@ -1,0 +1,14 @@
+{
+  "name": "english-benz-pipeline",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Content-generation pipeline for English Benz: generates exercises via the Claude API and inserts them into Supabase.",
+  "scripts": {
+    "generate": "node generate-content.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "@supabase/supabase-js": "^2.45.0"
+  }
+}

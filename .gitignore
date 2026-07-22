@@ -5,8 +5,13 @@ Thumbs.db
 .vscode/
 .idea/
 
-# Node (only relevant if tooling is added later)
+# Node
 node_modules/
+
+# Secrets — never commit real keys
+.env
+*.env
+!*.env.example
 
 # Claude Code local settings
 .claude/settings.local.json
