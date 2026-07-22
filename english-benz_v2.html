@@ -1,0 +1,1126 @@
+<div class="app">
+<h2 class="sr-only">English Benz: phrasal verb quiz, news translation quiz, and audio transcription game</h2>
+
+<style>
+  .app{font-family:'Instrument Sans',-apple-system,sans-serif; color:#0A0A0A; background:#FAFAF7; padding:1.5rem 0; border-radius:24px;}
+  .app *{box-sizing:border-box;}
+  .app-inner{max-width:520px; margin:0 auto; padding:0 1rem;}
+  .eyebrow{font-family:'Instrument Sans',sans-serif; font-size:12px; font-weight:500; letter-spacing:0.06em; text-transform:uppercase; color:#0A0A0A; background:#FFFFFF; display:inline-block; padding:6px 14px; border-radius:999px; margin-bottom:0.9rem;}
+  .h1{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif; font-weight:700; font-size:2.4rem; margin:0 0 0.4rem; letter-spacing:-0.03em; line-height:1.05;}
+  .h1 em{font-style:italic; font-weight:600; color:#0A0A0A;}
+  .lede{font-size:15px; color:#5A5A5A; margin:0 0 1.4rem; max-width:34ch;}
+
+  .menu-grid{display:flex; flex-direction:column; gap:14px;}
+  .menu-btn{
+    display:flex; justify-content:space-between; align-items:center; gap:16px;
+    border:none; border-radius:26px; padding:1.15rem 1.35rem 1.15rem 1.35rem;
+    cursor:pointer; text-align:left; width:100%; position:relative; overflow:hidden;
+    font-family:'Instrument Sans',sans-serif; transition:transform .14s ease;
+  }
+  .menu-btn:hover{transform:translateY(-2px);}
+  .menu-btn:active{transform:translateY(0);}
+  .menu-btn[data-mode="pv100"]{background:#C6F462;}
+  .menu-btn[data-mode="pv300"]{background:#E5D6FF;}
+  .menu-btn[data-mode="trB2"]{background:#FFE8A3;}
+  .menu-btn[data-mode="trC1"]{background:#B8E4FF;}
+  .menu-btn[data-mode="trC2"]{background:#FFC9B5;}
+  .menu-btn[data-mode="audio"]{background:#0A0A0A; color:#FAFAF7;}
+  .menu-btn[data-mode="audio"] .sub{color:#B8B8B8;}
+  .menu-btn[data-mode="audio"] .icon-circle{background:#C6F462; color:#0A0A0A;}
+  .menu-btn .title{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif; font-weight:600; font-size:19px; line-height:1.15; letter-spacing:-0.02em;}
+  .menu-btn .title em{font-style:italic; font-weight:500;}
+  .menu-btn .sub{font-size:13px; color:#4A4A4A; margin-top:3px; line-height:1.35;}
+  .menu-btn .icon-circle{
+    flex-shrink:0; width:52px; height:52px; border-radius:50%;
+    background:#0A0A0A; color:#FAFAF7;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .menu-btn .icon-circle svg{width:24px; height:24px;}
+
+  .stats-link{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; margin-top:18px; background:#FFFFFF; border:1.5px solid #0A0A0A;
+    font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:14px;
+    color:#0A0A0A; cursor:pointer; padding:14px; border-radius:999px;
+  }
+  .stats-link:hover{background:#0A0A0A; color:#FAFAF7;}
+
+  .metric-grid{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; margin-bottom:1.75rem;}
+  .metric-card{background:#FFFFFF; border-radius:20px; padding:1.1rem 0.9rem; border:1.5px solid #0A0A0A;}
+  .metric-card:nth-child(1){background:#C6F462;}
+  .metric-card:nth-child(2){background:#E5D6FF;}
+  .metric-card:nth-child(3){background:#FFE8A3;}
+  .metric-label{font-family:'Instrument Sans',sans-serif; font-size:11px; color:#0A0A0A; text-transform:uppercase; font-weight:600; letter-spacing:0.04em;}
+  .metric-value{font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:28px; margin-top:6px; letter-spacing:-0.02em;}
+  .metric-sub{font-size:11px; color:#0A0A0A; margin-top:2px; opacity:0.7;}
+
+  .challenge-section{margin-bottom:1.75rem;}
+  .challenge-title{font-family:'Bricolage Grotesque',sans-serif; font-weight:600; font-size:18px; margin-bottom:10px; letter-spacing:-0.02em;}
+  .challenge-row{display:flex; justify-content:space-between; align-items:center; background:#FFFFFF; border:1.5px solid #0A0A0A; border-radius:16px; padding:0.75rem 1rem; margin-bottom:8px;}
+  .challenge-name{font-size:14px; font-weight:600; font-family:'Instrument Sans',sans-serif;}
+  .challenge-meaning{font-size:12px; color:#5A5A5A; margin-top:2px;}
+  .challenge-count{font-family:'Instrument Sans',sans-serif; font-size:11px; font-weight:600; background:#FFC9B5; color:#0A0A0A; padding:4px 10px; border-radius:999px; border:1.5px solid #0A0A0A;}
+  .empty-note{font-size:14px; color:#5A5A5A;}
+
+  .back-btn{
+    display:inline-flex; align-items:center; gap:6px;
+    background:#FFFFFF; border:1.5px solid #0A0A0A; font-family:'Instrument Sans',sans-serif;
+    font-size:13px; font-weight:600; color:#0A0A0A; cursor:pointer;
+    padding:8px 14px; margin-bottom:1.2rem; border-radius:999px;
+  }
+  .back-btn:hover{background:#0A0A0A; color:#FAFAF7;}
+
+  .top{display:flex; justify-content:space-between; align-items:center; margin-bottom:0.7rem;}
+  .round{font-family:'Instrument Sans',sans-serif; font-size:12px; font-weight:600; letter-spacing:0.03em; color:#0A0A0A; text-transform:uppercase; background:#FFFFFF; padding:5px 12px; border-radius:999px; border:1.5px solid #0A0A0A;}
+  .score{font-family:'Instrument Sans',sans-serif; font-size:12px; font-weight:700; background:#0A0A0A; color:#C6F462; padding:6px 14px; border-radius:999px;}
+
+  .weak{font-size:13px; color:#5A5A5A; margin:0 0 1rem; min-height:16px;}
+  .weak .chip{display:inline-block; background:#FFFFFF; color:#0A0A0A; padding:3px 10px; border-radius:999px; font-weight:600; margin:0 3px 3px 0; border:1.5px solid #0A0A0A;}
+
+  .card{background:#FFFFFF; border:1.5px solid #0A0A0A; border-radius:24px; padding:1.75rem;}
+
+  .tag{display:inline-block; font-size:11px; padding:4px 12px; border-radius:999px; background:#C6F462; color:#0A0A0A; margin-bottom:14px; font-family:'Instrument Sans',sans-serif; font-weight:600; border:1.5px solid #0A0A0A;}
+
+  .sentence{font-family:'Bricolage Grotesque',sans-serif; font-weight:500; font-size:22px; line-height:1.4; margin:0 0 1.4rem; letter-spacing:-0.02em;}
+  .sentence.quote{font-style:italic; font-weight:500;}
+  .sentence .blank{display:inline-block; border-bottom:3px solid #0A0A0A; padding:0 8px; background:#C6F462; border-radius:6px 6px 0 0;}
+
+  .options{display:flex; flex-direction:column; gap:10px;}
+  .opt{
+    text-align:left; background:#FAFAF7; border:1.5px solid #0A0A0A; border-radius:18px;
+    padding:0.85rem 1.15rem; font-family:'Instrument Sans',sans-serif; font-weight:500; font-size:15px;
+    color:#0A0A0A; cursor:pointer; transition:background .12s, transform .08s;
+  }
+  .opt:hover:not(:disabled){background:#F0F0EA;}
+  .opt:active:not(:disabled){transform:scale(0.99);}
+  .opt:disabled{cursor:default;}
+  .opt.correct{background:#C6F462; font-weight:600;}
+  .opt.wrong{background:#FFC9B5; font-weight:600;}
+  .feedback{font-size:14px; font-weight:600; margin:1rem 0 0; min-height:20px;}
+  .bonus{margin-top:1rem; padding:0.9rem 1.1rem; background:#E5D6FF; border-radius:18px; border:1.5px solid #0A0A0A; font-family:'Bricolage Grotesque',sans-serif; font-size:14px; color:#0A0A0A; font-style:italic;}
+
+  .actions{display:flex; justify-content:space-between; align-items:center; margin-top:1.4rem; gap:10px; flex-wrap:wrap;}
+  .actions-right{display:flex; gap:10px; align-items:center; margin-left:auto;}
+  .end-session{
+    font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:14px;
+    background:#FFFFFF; color:#0A0A0A; border:1.5px solid #0A0A0A;
+    padding:0.75rem 1.3rem; border-radius:999px; cursor:pointer;
+  }
+  .end-session:hover{background:#0A0A0A; color:#FAFAF7;}
+  .reset{background:none; border:none; font-family:'Instrument Sans',sans-serif; font-size:13px; font-weight:500; color:#5A5A5A; text-decoration:underline; cursor:pointer; padding:0;}
+  .reset:hover{color:#0A0A0A;}
+  .next{
+    font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:14px;
+    background:#0A0A0A; color:#FAFAF7; border:none;
+    padding:0.85rem 1.6rem; border-radius:999px; cursor:pointer; display:none;
+    transition:transform .1s;
+  }
+  .next:hover{transform:scale(1.03);}
+  #audio-play{background:#C6F462; color:#0A0A0A; border:1.5px solid #0A0A0A;}
+
+  .loading{font-family:'Instrument Sans',sans-serif; font-size:14px; color:#5A5A5A; padding:2.5rem 0; text-align:center;}
+  .error-box{font-size:14px; color:#0A0A0A; background:#FFC9B5; border:1.5px solid #0A0A0A; border-radius:18px; padding:1rem;}
+  .sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0);}
+
+  @media (max-width:480px){
+    .h1{font-size:2rem;}
+    .menu-btn .title{font-size:17px;}
+    .sentence{font-size:19px;}
+  }
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,500&display=swap" rel="stylesheet">
+
+<div class="app-inner">
+<div id="view-menu">
+  <div class="eyebrow">English Benz · B2 → C2</div>
+  <h1 class="h1">Practice <em>English</em>, one round at a time.</h1>
+  <p class="lede">Four games. Real book sentences and today's news. Your progress follows you across devices.</p>
+  <div class="menu-grid">
+    <button class="menu-btn" data-mode="pv100">
+      <div>
+        <div class="title">Phrasal verbs · Top 100</div>
+        <div class="sub">Real sentences from a phrasal-verb course book</div>
+      </div>
+      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4z"/><path d="M4 4v13a3 3 0 0 0 3 3"/><path d="M8 8h8M8 12h6"/></svg></span>
+    </button>
+    <button class="menu-btn" data-mode="pv300">
+      <div>
+        <div class="title">Phrasal verbs · Top 200</div>
+        <div class="sub">A wider pool, same real-sentence source</div>
+      </div>
+      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 4v16M16 4v16"/></svg></span>
+    </button>
+    <button class="menu-btn" data-mode="trB2">
+      <div>
+        <div class="title">Guess the translation · B2</div>
+        <div class="sub">Real news sentences, everyday complexity</div>
+      </div>
+      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h12M9 3v2M6 14l5-9 5 9M4 14h8"/><path d="M12 18h9M15 13l4 8 4-8M17 21h4" transform="translate(-2 -2)"/></svg></span>
+    </button>
+    <button class="menu-btn" data-mode="trC1">
+      <div>
+        <div class="title">Guess the translation · C1</div>
+        <div class="sub">More idiomatic, less frequent vocabulary</div>
+      </div>
+      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg></span>
+    </button>
+    <button class="menu-btn" data-mode="trC2">
+      <div>
+        <div class="title">Guess the translation · C2</div>
+        <div class="sub">Near-native complexity and nuance</div>
+      </div>
+      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg></span>
+    </button>
+    <button class="menu-btn" data-mode="audio">
+      <div>
+        <div class="title">Spot the <em>transcription</em></div>
+        <div class="sub">Real news sentences, read aloud — pick what was said</div>
+      </div>
+      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 7v10M4 10v4M16 5v14M20 8v8"/></svg></span>
+    </button>
+  </div>
+  <button class="stats-link" id="stats-open">See my stats <span>→</span></button>
+</div>
+
+<div id="view-pv" style="display:none;">
+  <button class="back-btn" id="pv-back">← Menu</button>
+  <div class="top"><span class="round" id="pv-round">Question 1</span><span class="score" id="pv-score">Score: 0</span></div>
+  <p class="weak" id="pv-weakspots"></p>
+  <div class="card">
+    <p class="sentence" id="pv-sentence"></p>
+    <div class="options" id="pv-options"></div>
+    <p class="feedback" id="pv-feedback"></p>
+    <div class="bonus" id="pv-bonus" style="display:none;"></div>
+  </div>
+  <div class="actions"><button class="reset" id="pv-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="pv-end">End session</button><button class="next" id="pv-next">Next question</button></div></div>
+</div>
+
+<div id="view-tr" style="display:none;">
+  <button class="back-btn" id="tr-back">← Menu</button>
+  <div class="top"><span class="round" id="tr-round">Question 1</span><span class="score" id="tr-score">Score: 0</span></div>
+  <p class="weak" id="tr-weakspots"></p>
+  <div id="tr-body"><div class="loading" id="tr-loading">Fetching a sentence from today's news…</div></div>
+  <div class="actions"><button class="reset" id="tr-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="tr-end">End session</button><button class="next" id="tr-next">Next sentence</button></div></div>
+</div>
+
+<div id="view-stats" style="display:none;">
+  <button class="back-btn" id="stats-back">← Menu</button>
+  <h1 class="h1" style="font-size:2rem; margin-bottom:0.3rem;">Your <em>stats</em></h1>
+  <p class="lede">Progress across every game.</p>
+  <div id="stats-body"><div class="loading">Loading your stats…</div></div>
+</div>
+
+<div id="view-audio" style="display:none;">
+  <button class="back-btn" id="audio-back">← Menu</button>
+  <div class="top"><span class="round" id="audio-round">Question 1</span><span class="score" id="audio-score">Score: 0</span></div>
+  <p class="weak" id="audio-note"></p>
+  <div id="audio-body"><div class="loading">Fetching a sentence from today's news…</div></div>
+  <div class="actions"><button class="reset" id="audio-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="audio-end">End session</button><button class="next" id="audio-next">Next clip</button></div></div>
+</div>
+
+</div>
+</div>
+
+<script>
+/* ---------- storage shim ----------
+   The claude.ai Artifacts runtime provides window.storage. When the app runs
+   as a plain file or anywhere that runtime is absent, fall back to
+   localStorage so progress and stats still persist. Shape matches the native
+   API: get(key) -> {value} | null ; set(key, value). */
+if(!window.storage){
+  window.storage = {
+    get: function(key){
+      try { var v = localStorage.getItem('eb:' + key); return v === null ? null : { value: v }; }
+      catch(e){ return null; }
+    },
+    set: function(key, value){
+      try { localStorage.setItem('eb:' + key, value); } catch(e){}
+    }
+  };
+}
+
+/* ---------- offline fallback content ----------
+   Used when the live news-generation API is unreachable (e.g. running as a
+   plain file, or outside the claude.ai runtime). Evergreen, pre-written
+   exercises so Translation and Audio stay fully playable offline. On
+   claude.ai the live fetch runs first and this is only a safety net. */
+var TR_FALLBACK = {
+  B2: [
+    {source:"BBC News", topic:"technology", english_sentence:"The new app helps users learn a language every day.", correct_translation:"La nuova app aiuta gli utenti a imparare una lingua ogni giorno.", distractor_1:"La vecchia app impedisce agli utenti di studiare la lingua.", distractor_2:"La nuova app vende corsi di lingua agli insegnanti."},
+    {source:"TIME", topic:"health", english_sentence:"Doctors say walking every day improves your mood.", correct_translation:"I medici dicono che camminare ogni giorno migliora l'umore.", distractor_1:"I medici negano che camminare abbia effetti sulla salute.", distractor_2:"I pazienti dicono che correre peggiora il loro umore."},
+    {source:"The New York Times", topic:"environment", english_sentence:"Cities are planting more trees to cool the streets.", correct_translation:"Le città stanno piantando più alberi per rinfrescare le strade.", distractor_1:"Le città stanno tagliando gli alberi per allargare le strade.", distractor_2:"Le fabbriche piantano alberi per vendere il legno."},
+    {source:"BBC News", topic:"economy", english_sentence:"Small shops reported higher sales during the holidays.", correct_translation:"I piccoli negozi hanno registrato vendite più alte durante le feste.", distractor_1:"I grandi negozi hanno chiuso durante tutte le feste.", distractor_2:"I piccoli negozi hanno perso clienti durante l'estate."},
+    {source:"TIME", topic:"culture", english_sentence:"The museum opened a free exhibition for students.", correct_translation:"Il museo ha aperto una mostra gratuita per gli studenti.", distractor_1:"Il museo ha chiuso la mostra riservata agli studenti.", distractor_2:"Il teatro ha venduto biglietti costosi agli studenti."},
+    {source:"The New York Times", topic:"sport", english_sentence:"The young player scored twice in her first match.", correct_translation:"La giovane giocatrice ha segnato due volte nella sua prima partita.", distractor_1:"La giovane giocatrice ha perso la sua prima partita.", distractor_2:"L'allenatore ha segnato due gol nell'ultima partita."},
+    {source:"BBC News", topic:"science", english_sentence:"Scientists found water on a distant, rocky planet.", correct_translation:"Gli scienziati hanno trovato acqua su un pianeta roccioso e lontano.", distractor_1:"Gli scienziati hanno perso i dati sul pianeta vicino.", distractor_2:"Gli scienziati hanno costruito un pianeta con l'acqua."},
+    {source:"TIME", topic:"society", english_sentence:"Volunteers cleaned the beach early on Sunday morning.", correct_translation:"I volontari hanno pulito la spiaggia presto domenica mattina.", distractor_1:"I turisti hanno sporcato la spiaggia sabato sera.", distractor_2:"I volontari hanno chiuso la spiaggia per una settimana."}
+  ],
+  C1: [
+    {source:"The New York Times", topic:"politics", english_sentence:"Lawmakers narrowly approved the long-delayed housing bill.", correct_translation:"I legislatori hanno approvato di misura la legge sulla casa a lungo rinviata.", distractor_1:"I legislatori hanno respinto senza discussione la nuova legge sulla casa.", distractor_2:"I giudici hanno sospeso rapidamente la legge sulla casa."},
+    {source:"BBC News", topic:"economy", english_sentence:"Inflation eased slightly, offering relief to weary households.", correct_translation:"L'inflazione è calata leggermente, dando sollievo alle famiglie provate.", distractor_1:"L'inflazione è aumentata bruscamente, allarmando le famiglie ricche.", distractor_2:"L'occupazione è calata leggermente, preoccupando le imprese."},
+    {source:"TIME", topic:"technology", english_sentence:"The firm quietly abandoned its ambitious self-driving project.", correct_translation:"L'azienda ha abbandonato in sordina il suo ambizioso progetto di guida autonoma.", distractor_1:"L'azienda ha lanciato con clamore il suo progetto di guida autonoma.", distractor_2:"Il governo ha finanziato in segreto un progetto di guida autonoma."},
+    {source:"The New York Times", topic:"environment", english_sentence:"Rising seas are gradually reshaping the fragile coastline.", correct_translation:"L'innalzamento dei mari sta gradualmente ridisegnando la fragile costa.", distractor_1:"L'abbassamento dei mari sta rapidamente ampliando la solida costa.", distractor_2:"Le maree stanno lentamente proteggendo la fragile costa."},
+    {source:"BBC News", topic:"health", english_sentence:"Researchers cautiously welcomed the promising trial results.", correct_translation:"I ricercatori hanno accolto con cautela i promettenti risultati della sperimentazione.", distractor_1:"I ricercatori hanno respinto con entusiasmo i deludenti risultati.", distractor_2:"I pazienti hanno ignorato del tutto i risultati della sperimentazione."},
+    {source:"TIME", topic:"culture", english_sentence:"The novelist drew heavily on her turbulent childhood memories.", correct_translation:"La romanziera ha attinto molto ai suoi turbolenti ricordi d'infanzia.", distractor_1:"La romanziera ha nascosto con cura i suoi sereni ricordi d'infanzia.", distractor_2:"Il regista ha ignorato del tutto i ricordi d'infanzia dell'autrice."},
+    {source:"The New York Times", topic:"science", english_sentence:"The findings challenge a theory long taken for granted.", correct_translation:"Le scoperte mettono in discussione una teoria a lungo data per scontata.", distractor_1:"Le scoperte confermano una teoria da tempo abbandonata.", distractor_2:"Le scoperte ignorano una teoria recentemente proposta."},
+    {source:"BBC News", topic:"society", english_sentence:"The reform sparked heated debate across the divided nation.", correct_translation:"La riforma ha acceso un acceso dibattito nella nazione divisa.", distractor_1:"La riforma ha spento ogni dibattito nella nazione unita.", distractor_2:"La riforma ha rimandato il dibattito nella piccola città."}
+  ],
+  C2: [
+    {source:"TIME", topic:"politics", english_sentence:"The accord, however tentative, marked a discernible thaw in relations.", correct_translation:"L'accordo, per quanto provvisorio, segnò un evidente disgelo nei rapporti.", distractor_1:"L'accordo, benché definitivo, provocò un netto irrigidimento nei rapporti.", distractor_2:"Il trattato, seppur vincolante, passò del tutto inosservato tra le parti."},
+    {source:"The New York Times", topic:"economy", english_sentence:"Speculative fervour, unmoored from fundamentals, buoyed the market briefly.", correct_translation:"Il fervore speculativo, slegato dai fondamentali, sostenne brevemente il mercato.", distractor_1:"La cautela prudente, ancorata ai fondamentali, affossò a lungo il mercato.", distractor_2:"Il panico diffuso, legato ai fondamentali, gonfiò stabilmente il mercato."},
+    {source:"BBC News", topic:"culture", english_sentence:"Her prose, spare yet luminous, resists easy paraphrase.", correct_translation:"La sua prosa, essenziale ma luminosa, resiste a ogni facile parafrasi.", distractor_1:"La sua prosa, ridondante e opaca, si presta a una comoda parafrasi.", distractor_2:"Il suo verso, denso ma cupo, invita a una rapida traduzione."},
+    {source:"TIME", topic:"science", english_sentence:"The hypothesis, elegant though unproven, has quietly gained adherents.", correct_translation:"L'ipotesi, elegante seppur non provata, ha guadagnato in sordina dei sostenitori.", distractor_1:"L'ipotesi, goffa e dimostrata, ha perso rumorosamente ogni sostenitore.", distractor_2:"La teoria, elegante e confutata, ha respinto apertamente i suoi critici."},
+    {source:"The New York Times", topic:"environment", english_sentence:"Decades of neglect had rendered the wetlands all but irreparable.", correct_translation:"Decenni di incuria avevano reso le zone umide quasi irrecuperabili.", distractor_1:"Anni di tutela avevano reso le zone umide del tutto rigogliose.", distractor_2:"Decenni di studio avevano reso le foreste facilmente recuperabili."},
+    {source:"BBC News", topic:"society", english_sentence:"The verdict laid bare tensions the city had long sought to suppress.", correct_translation:"Il verdetto mise a nudo tensioni che la città aveva a lungo cercato di reprimere.", distractor_1:"Il verdetto celò del tutto le tensioni che la città aveva appena scoperto.", distractor_2:"La sentenza risolse le tensioni che la regione aveva sempre ignorato."},
+    {source:"TIME", topic:"technology", english_sentence:"The breach, insidious and protracted, went undetected for months.", correct_translation:"La violazione, insidiosa e prolungata, rimase inosservata per mesi.", distractor_1:"La violazione, evidente e fugace, fu individuata in pochi minuti.", distractor_2:"L'aggiornamento, insidioso ma breve, fu notato dopo pochi mesi."},
+    {source:"The New York Times", topic:"health", english_sentence:"Clinicians remain wary of extrapolating from so slender a sample.", correct_translation:"I clinici restano diffidenti nell'estrapolare da un campione così esiguo.", distractor_1:"I clinici sono ansiosi di generalizzare da un campione così ampio.", distractor_2:"I pazienti restano diffidenti nel donare un campione così esiguo."}
+  ]
+};
+var AUDIO_FALLBACK = [
+  {source:"BBC News", topic:"technology", correct_sentence:"The company released a new phone this week.", decoy_1:"The company released a new phone last week.", decoy_2:"The company repaired a new phone this week."},
+  {source:"TIME", topic:"health", correct_sentence:"Experts recommend eight hours of sleep each night.", decoy_1:"Experts recommend eight hours of sleep each morning.", decoy_2:"Experts require eight hours of sleep each night."},
+  {source:"The New York Times", topic:"environment", correct_sentence:"Heavy rain caused flooding across the region.", decoy_1:"Heavy rain caused flooding across the country.", decoy_2:"Heavy wind caused flooding across the region."},
+  {source:"BBC News", topic:"economy", correct_sentence:"Fuel prices fell for the third month in a row.", decoy_1:"Fuel prices rose for the third month in a row.", decoy_2:"Fuel prices fell for the fourth month in a row."},
+  {source:"TIME", topic:"sport", correct_sentence:"The team won the final match after extra time.", decoy_1:"The team lost the final match after extra time.", decoy_2:"The team won the first match after extra time."},
+  {source:"The New York Times", topic:"science", correct_sentence:"The rocket launched successfully early on Monday.", decoy_1:"The rocket launched successfully early on Sunday.", decoy_2:"The rocket landed successfully early on Monday."},
+  {source:"BBC News", topic:"politics", correct_sentence:"The minister announced the plan during the meeting.", decoy_1:"The minister announced the plan before the meeting.", decoy_2:"The minister cancelled the plan during the meeting."},
+  {source:"TIME", topic:"culture", correct_sentence:"The festival attracted thousands of visitors this year.", decoy_1:"The festival attracted thousands of visitors last year.", decoy_2:"The festival attracted hundreds of visitors this year."},
+  {source:"The New York Times", topic:"society", correct_sentence:"Volunteers delivered meals to families in need.", decoy_1:"Volunteers delivered meals to families in debt.", decoy_2:"Volunteers donated meals to families in need."},
+  {source:"BBC News", topic:"health", correct_sentence:"The clinic offered free checkups to older residents.", decoy_1:"The clinic offered free checkups to younger residents.", decoy_2:"The clinic offered cheap checkups to older residents."}
+];
+function fallbackBatch(pool, count){
+  var arr = pool.slice();
+  for(var i=arr.length-1;i>0;i--){ var j=Math.floor(Math.random()*(i+1)); var t=arr[i]; arr[i]=arr[j]; arr[j]=t; }
+  return arr.slice(0, Math.max(1, count||1));
+}
+
+/* ---------- shared helpers ---------- */
+var ACTIVITY_LOG_KEY = 'activity-log';
+async function logAttempt(game, ok){
+  var log = [];
+  try {
+    var res = await window.storage.get(ACTIVITY_LOG_KEY, false);
+    if(res && res.value) log = JSON.parse(res.value);
+  } catch(e){
+    // Missing key or parse error — start with an empty log rather than
+    // silently skipping the write below.
+    log = [];
+  }
+  try {
+    log.push({ t: Date.now(), g: game, ok: !!ok });
+    if(log.length > 800) log = log.slice(log.length - 800);
+    await window.storage.set(ACTIVITY_LOG_KEY, JSON.stringify(log), false);
+  } catch(e){}
+}
+function shuffle(a){ return a.slice().sort(function(){ return Math.random()-0.5; }); }
+function hashStr(s){ var h=0; for(var i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))>>>0; } return h; }
+function blankFor(v){ return v.split(' ').map(function(){return '___';}).join(' '); }
+function renderBlank(s){
+  return s.replace(/___(?: ___)*/g, function(m){
+    var n = m.split('___').length + 2;
+    return '<span class="blank">' + '_'.repeat(n) + '</span>';
+  });
+}
+function showView(id){
+  ['view-menu','view-pv','view-tr','view-stats','view-audio'].forEach(function(v){ document.getElementById(v).style.display = (v===id) ? 'block' : 'none'; });
+}
+
+/* ---------- phrasal verbs data ----------
+   Sentences and definitions adapted from "The Ultimate Phrasal Verb Book"
+   (Jeff Kittay / TAWCER edition), a published phrasal-verb course book —
+   not auto-generated. Each verb keeps 1-3 real sentences from the book,
+   picked at random each time you see that verb again. */
+var PV_TIER1 = ["come across","hold off","look into","run into","wear off","figure out","put off","go over","break down","count on","deal with","give up","point out","pull off","show up","sort out","turn out","wrap up","back up","break up","call back","check out","come back","come out","cut off","do without","end up","fall apart","fall behind","fill in","fill out","get away","get by","give away","go on","grow up","hand in","hand out","hang on","hold up","keep on","lay off","look up","make up","pick up","put away","put on","put together","settle down","show off","take off","throw away","turn into","turn off","turn on","turn up","warm up","wear out","work out","aim at","ask for","ask out","back off","beef up","believe in","blow out","blow up","boil down to","bump into","burn out","burn up","burst out","call in","call up","calm down","care for","catch on","cheat on","clean out","clear out","clear up","close down","come about","come down","come down to","come from","come in","come off","come on","come through","come up","cool off","count up","cover up","cross off","cut out","do away with","dress up","dry out","empty out"];
+var PV_TIER2 = ["come across","hold off","look into","run into","wear off","figure out","put off","go over","break down","count on","deal with","give up","point out","pull off","show up","sort out","turn out","wrap up","back up","break up","call back","check out","come back","come out","cut off","do without","end up","fall apart","fall behind","fill in","fill out","get away","get by","give away","go on","grow up","hand in","hand out","hang on","hold up","keep on","lay off","look up","make up","pick up","put away","put on","put together","settle down","show off","take off","throw away","turn into","turn off","turn on","turn up","warm up","wear out","work out","aim at","ask for","ask out","back off","beef up","believe in","blow out","blow up","boil down to","bump into","burn out","burn up","burst out","call in","call up","calm down","care for","catch on","cheat on","clean out","clear out","clear up","close down","come about","come down","come down to","come from","come in","come off","come on","come through","come up","cool off","count up","cover up","cross off","cut out","do away with","dress up","dry out","empty out","fall off","fight back","figure on","fill up","fix up","flip out","float around","fool around","freak out","get ahead","get back at","get off","get on","get out of","get to","get up","go after","go around","go beyond","go by","go down","go for","go in","go off","go with","goof around","hang around","hang out","head for","head toward","hear of","hit on","hold out","hurry up","keep at","keep from","keep off","kick back","knock off","knock out","know about","let out","lie around","lift up","light up","line up","live with","lock in","lock up","look around","look at","look up to","luck out","make for","make of","make out","mess up","mix up","monkey around with","move inlinto","open up","pay for","pay up","pick on","pick out","plan ahead","plan for","plan on","point to","pull over","put in","put inlinto","put out","rip up","run across","run down","run over","screw up","see about","settle for","shake up","sign out","slow down","stand around","stand for","stand up","start off","start out","start up","stay off","stay up","step on","stick around","stick out","stick to","stick up","stick with","stop over","straighten out","switch off"];
+
+var PV_DATA = {
+  "come across": {m:"When people cross from one side of a space or distance to where you are, they come across.", q:[{s:"Run across is similar to ___BLANK___.",a:"come across",suf:""},{s:"I asked the antique dealer if she had ever ___BLANK___ a Windsor chair.",a:"come across",suf:""}]},
+  "hold off": {m:"When you hold off or hold off doing something, you delay doing it.", q:[{s:"If you ___BLANK___ a competitor, you prevent the competitor from winning.",a:"hold off",suf:""}]},
+  "look into": {m:"When you look into something or look into doing something, you investigate it or get more information about it.", q:[{s:"After receiving many complaints about the company, the attorney general decided to ___BLANK___ the matter.",a:"look into",suf:""},{s:"Maybe leasing a car is something I should ___BLANK___.",a:"look into",suf:""}]},
+  "run into": {m:"When you meet people unexpectedly or unintentionally, you run into them.", q:[{s:"Bump into is the same as ___BLANK___.",a:"run into",suf:""},{s:"If you fixed everything on that old car that needs fixing, it would ___BLANK___ thousands of dollars.",a:"run into",suf:""}]},
+  "wear off": {m:"When the surface of something is gradually removed by friction or exposure to the elements so that what is beneath the surface is exposed, the...", q:[{s:"The gold ___BLANK___ this cheap jewelry right away.",a:"wears off",suf:"s"},{s:"He's going to have a big headache after the vodka ___BLANK___.",a:"wears off",suf:"s"}]},
+  "figure out": {m:"When you figure out something, such as the answer to a question, the solution to a problem, or why a person is a certain way or acts a certain...", q:[{s:"I looked everywhere for my keys, but I couldn't ___BLANK___ where I put them.",a:"figure out",suf:""}]},
+  "put off": {m:"When you put off something or put off doing something, you delay or postpone it.", q:[{s:"Buying a new house will have to be ___BLANK___ until we can afford it.",a:"put off",suf:""}]},
+  "go over": {m:"When you carefully read or review important written material, you go over it.", q:[{s:"___BLANK___ it and tell me what you think.",a:"Go over",suf:""},{s:"Senator Dolittle's plan to raise taxes didn't ___BLANK___ with the voters.",a:"go over",suf:""}]},
+  "break down": {m:"When something decomposes or reduces to its smallest parts or is reduced by someone to its smallest parts, it breaks down.", q:[{s:"After the poison ___BLANK___, it's quite harmless.",a:"breaks down",suf:"s"},{s:"Anticoagulant drugs are used to ___BLANK___ blood clots.",a:"break down",suf:""}]},
+  "count on": {m:"When you need something important to happen or a certain condition to exist, you are counting on it.", q:[{s:"I'm ___BLANK___ getting a ride to the airport with Betty.",a:"counting on",suf:"ing"},{s:"Farmers ___BLANK___ a lot of rain in the spring.",a:"count on",suf:""},{s:"You can ___BLANK___ it.",a:"count on",suf:""}]},
+  "deal with": {m:"When you deal with a project or a problem, you do what you must do to complete the project or to solve the problem.", q:[{s:"There are many problems, but I can ___BLANK___ only one at a time.",a:"deal with",suf:""},{s:"After school the principal will ___BLANK___ the boys who broke the window.",a:"deal with",suf:""}]},
+  "give up": {m:"When you are running from or fighting with the police or enemy soldiers and you surrender, you give up or give yourself up.", q:[{s:"I had to ___BLANK___ my second job because I was so exhausted all the time.",a:"give up",suf:""}]},
+  "point out": {m:"When you bring things or people to someone's attention or indicate the location of things or people with your hand or index finger, you point them...", q:[{s:"General Johnston showed the satellite photo to the reporter and ___BLANK___ the enemy tanks.",a:"pointed out",suf:"ed"}]},
+  "pull off": {m:"When you pull something off, you succeed in doing something difficult and possibly sneaky or illegal even though the chances of success are not high.", q:[{s:"If I get sleepy while I'm driving, I always ___BLANK___ the road and take a nap.",a:"pull off",suf:""}]},
+  "show up": {m:"When you appear somewhere, you show up.", q:[{s:"Turn up is similar to ___BLANK___.",a:"show up",suf:""},{s:"Over a hundred people ___BLANK___ for the news conference.",a:"showed up",suf:"ed"}]},
+  "sort out": {m:"When you sort a group of things out, you separate them into smaller groups according to one or more characteristics.", q:[{s:"The mail arrives at the post office alt mixed together, and it has to be ___BLANK___ before it can be delivered.",a:"sorted out",suf:"ed"}]},
+  "turn out": {m:"When things or people turn out to be a certain way, it is discovered or considered that they are that way.", q:[{s:"When things or people ___BLANK___ to be something, it is discovered or considered that they are that thing.",a:"turn out",suf:""},{s:"When something ___BLANK___ a certain way, it becomes that way.",a:"turns out",suf:"s"},{s:"Did the pictures you took at the wedding ___BLANK___?",a:"turn out",suf:""}]},
+  "wrap up": {m:"When you enclose an object in some kind of paper, usually gift wrapping paper or packaging paper, you wrap it up.", q:[{s:"Wind up is similar to ___BLANK___.",a:"wrap up",suf:""}]},
+  "back up": {m:"When you walk backward, you backup.", q:[{s:"When you drive a vehicle in reverse, you ___BLANK___ or back the vehicle up.",a:"back up",suf:""},{s:"The fire was so hot that we had to ___BLANK___.",a:"back up",suf:""}]},
+  "break up": {m:"When you break up a fight, you stop the fight.", q:[{s:"There was no way I could ___BLANK___ the fight between the two dogs.",a:"break up",suf:""}]},
+  "call back": {m:"When you call someone back, you call a person on the telephone who has called you earlier.", q:[{s:"Mike handed his letter of resignation to his boss, but he was ___BLANK___ after he left the office.",a:"called back",suf:"ed"}]},
+  "check out": {m:"When you check a place or thing out, you inspect it carefully or learn more about it.", q:[{s:"Hey George, ___BLANK___ that car Toad is driving.",a:"check out",suf:""},{s:"Applicants for child care jobs should be thoroughly ___BLANK___.",a:"checked out",suf:"ed"}]},
+  "come back": {m:"When a condition, problem, situation, or activity returns or greatly increases, it comes back.", q:[{s:"The pain in my shoulder has ___BLANK___.",a:"come back",suf:""},{s:"Western movies and TV shows go out of style and then ___BLANK___ every few years.",a:"come back",suf:""}]},
+  "come out": {m:"When information becomes known to the public, it comes out.", q:[{s:"What really happened when President Kennedy was assassinated may never ___BLANK___.",a:"come out",suf:""},{s:"Oak tree leaves always ___BLANK___ later than the leaves of other trees.",a:"come out",suf:""},{s:"Wait till the sun ___BLANK___; you'll get a better picture.",a:"comes out",suf:"s"}]},
+  "cut off": {m:"When you completely remove part of something with a knife, saw, or pair of scissors, you cut it off.", q:[{s:"He ___BLANK___ a piece of cheese so that I could taste it.",a:"cut off",suf:""},{s:"One of the kings of England had his head ___BLANK___.",a:"cut off",suf:""},{s:"I won't be surprised if my electricity is ___BLANK___— I haven't paid the bill in three months.",a:"cut off",suf:""}]},
+  "do without": {m:"When you do without something, you continue living or working without something that you want or need because it is not possible or available.", q:[{s:"Washing your hair everyday is something you have to ___BLANK___ when you go camping.",a:"do without",suf:""},{s:"___BLANK___ is something you get used to when you're poor.",a:"Doing without",suf:"ing"}]},
+  "end up": {m:"When people end up doing something or end up a certain way, it is the result of a series of decisions, actions, or unplanned and unexpected...", q:[{s:"___BLANK___ is similar to wind up.",a:"End up",suf:""},{s:"A hurricane was approaching Florida, so we ___BLANK___ coming home from our vacation early.",a:"ended up",suf:"ed"},{s:"Judy has never gone skydiving before, so she'll probably ___BLANK___ in the hospital with two broken legs.",a:"end up",suf:""}]},
+  "fall apart": {m:"When the parts of something become completely separated because it is old or in bad condition, it falls apart.", q:[{s:"These old shoes are starting to ___BLANK___.",a:"fall apart",suf:""},{s:"The peace agreement is slowly ___BLANK___.",a:"falling apart",suf:"ing"}]},
+  "fall behind": {m:"When you are in a group that is walking, running, driving, and so on, and they move ahead of you because you are moving more slowly than the...", q:[{s:"Keep up is the opposite of ___BLANK___.",a:"fall behind",suf:""}]},
+  "fill in": {m:"When you fill in a form, you put information in the correct spaces.", q:[{s:"Maria ___BLANK___ the job application and gave it to the secretary.",a:"filled in",suf:"ed"}]},
+  "fill out": {m:"When you fill out a form, you put information in the correct spaces.", q:[{s:"Fill in is the same as ___BLANK___.",a:"fill out",suf:""},{s:"Nicole started to ___BLANK___ after she started working at the candy shop.",a:"fill out",suf:""}]},
+  "get away": {m:"When you get away, you go on vacation.", q:[{s:"I have a lot of work to do, but I'll try to ___BLANK___ for a week or two.",a:"get away",suf:""},{s:"We always try to ___BLANK___ in January and go skiing.",a:"get away",suf:""}]},
+  "get by": {m:"When something, such as a mistake or a problem, gets by you, you do not notice it.", q:[{s:"I've got a great editor; no mistakes ___BLANK___ her.",a:"get by",suf:""},{s:"How did all these misspellings ___BLANK___ me?",a:"get by",suf:""}]},
+  "give away": {m:"When you give something away, you give it to someone without asking for anything in return because you do not want it or because you want to help...", q:[{s:"I haven't seen that movie yet, so don't ___BLANK___ the ending.",a:"give away",suf:""}]},
+  "go on": {m:"When an electrical device or system goes on, it begins to operate.", q:[{s:"A thermostat makes the air conditioner ___BLANK___ if it gets above a certain temperature.",a:"go on",suf:""},{s:"The lights ___BLANK___ automatically if someone walks near the door.",a:"goes on",suf:"es"},{s:"\"What's ___BLANK___?\" is a common informal greeting.",a:"going on",suf:"ing"}]},
+  "grow up": {m:"When you grow up, you gradually change from a child to an adult.", q:[{s:"___BLANK___ without a father wasn't easy.",a:"Growing up",suf:"ing"},{s:"Why don't you ___BLANK___!",a:"grow up",suf:""},{s:"When he put his fist through the wall, I said, \"Oh, ___BLANK___!\" hand out hand out & hands out handing out handed out handed out",a:"grow up",suf:""}]},
+  "hand in": {m:"When you hand in your resignation or letter of resignation, you inform your employer that you are quitting your job.", q:[{s:"The President asked the cabinet members to ___BLANK___ their resignations.",a:"hand in",suf:""}]},
+  "hand out": {m:"When you distribute something to other people, you hand it out.", q:[{s:"Give out is similar to ___BLANK___.",a:"hand out",suf:""},{s:"Emergency loan applications were ___BLANK___ to the flood victims.",a:"handed out",suf:"ed"}]},
+  "hang on": {m:"When you hang on, you wait for a short time.", q:[{s:"___BLANK___ for a minute — I'll be right back.",a:"Hang on",suf:""},{s:"Judy's coming to the phone now — can you ___BLANK___?",a:"hang on",suf:""}]},
+  "hold up": {m:"When a wall, column, or other structure supports the weight of something above it, such as a ceiling, it holds it up.", q:[{s:"Stick up is the same as ___BLANK___.",a:"hold up",suf:""},{s:"These cheap shoes won't ___BLANK___ more than six weeks.",a:"hold up",suf:""}]},
+  "keep on": {m:"When you keep on doing something, you continue doing it.", q:[{s:"Don't stop — ___BLANK___ going.",a:"keep on",suf:""}]},
+  "lay off": {m:"When a company no longer needs workers because it does not have enough business, it temporarily or permanently lays off the workers.", q:[{s:"If you don't ___BLANK___, you're going to be sorry.",a:"lay off",suf:""},{s:"___BLANK___ Nancy — she's having a bad day.",a:"Lay off",suf:""},{s:"You've got to ___BLANK___ cigarettes.",a:"lay off",suf:""}]},
+  "look up": {m:"When you get information from a reference book, such as a word from a dictionary or a telephone number from a telephone book, you look the word or...", q:[{s:"I ___BLANK___ his number, but it's not in the phone book.",a:"looked up",suf:"ed"},{s:"I was in Dallas on business, and I ___BLANK___ Dan Jones, my old college roommate.",a:"looked up",suf:"ed"}]},
+  "make up": {m:"When you invent a story to entertain or fool people, you make the story up.", q:[{s:"I can't ___BLANK___ my mind.",a:"make up",suf:""}]},
+  "pick up": {m:"When you pick something up, you lift it with your hand.", q:[{s:"All this trash has to be ___BLANK___.",a:"picked up",suf:"ed"},{s:"Sam ___BLANK___ his briefcase and left his office.",a:"picked up",suf:"ed"}]},
+  "put away": {m:"When you return something to the place where it is usually stored while it is not being used, you put it away.", q:[{s:"I told you to ___BLANK___ your toys before you go outside.",a:"put away",suf:""}]},
+  "put on": {m:"When you place something on or apply something to your body, you put it on.", q:[{s:"I ___BLANK___ my new dress before going to the party.",a:"put on",suf:""}]},
+  "put together": {m:"When you assemble the parts of something, you put it together.", q:[{s:"___BLANK___ is the opposite of take apart.",a:"Put together",suf:""}]},
+  "settle down": {m:"When you settle down, you become less active, nervous, or upset.", q:[{s:"I wish he'd ___BLANK___ and raise a family.",a:"settle down",suf:""}]},
+  "show off": {m:"When you show off, you let people see something you have or something you can do in a very obvious and excessive way.", q:[{s:"The boy was ___BLANK___ by riding his bicycle with no hands when he fell and hurt himself.",a:"showing off",suf:"ing"}]},
+  "take off": {m:"When you remove something from your body, you take it off.", q:[{s:"___BLANK___ your shoes.",a:"Take off",suf:""}]},
+  "throw away": {m:"When you throw something away, you dispose of it by 385 putting it in the wastebasket, trash, and so on.", q:[{s:"Throw out is the same as ___BLANK___.",a:"throw away",suf:""}]},
+  "turn into": {m:"When something turns into something else, it becomes that thing.", q:[{s:"It was cold and rainy this morning, but it ___BLANK___ a nice day.",a:"turned into",suf:"ed"},{s:"It's amazing that this small seed can ___BLANK___ a huge tree.",a:"turn into",suf:""}]},
+  "turn off": {m:"When you turn off an electrical or mechanical device, you change the controls to stop it from producing or doing something.", q:[{s:"Turn on is the opposite of ___BLANK___.",a:"turn off",suf:""},{s:"Switch off and shut off are similar to ___BLANK___.",a:"turn off",suf:""}]},
+  "turn on": {m:"When you turn on an electrical or mechanical device, you change the controls to make it start producing or doing something.", q:[{s:"I wonder why she ___BLANK___ me like that?",a:"turned on",suf:"ed"}]},
+  "turn up": {m:"When you turn up an electrical or mechanical device, you change the controls to increase the level of what it is producing or doing.", q:[{s:"Turn down is the opposite of ___BLANK___.",a:"turn up",suf:""},{s:"Will you ___BLANK___ the TV?",a:"turn up",suf:""},{s:"When something ___BLANK___, it is found or is learned of as a result of an investigation or search.",a:"turns up",suf:"s"}]},
+  "warm up": {m:"When the temperature of a thing or place becomes higher, it warms up.", q:[{s:"I hope it ___BLANK___ before the picnic.",a:"warms up",suf:"s"}]},
+  "wear out": {m:"When something wears out or you wear it out, it becomes damaged or weak from use and age and is no longer usable.", q:[{s:"People who live in the city ___BLANK___ their car brakes faster than people who live in the country.",a:"wear out",suf:""}]},
+  "work out": {m:"When a situation works out a certain way, it happens that way.", q:[{s:"When a situation does not ___BLANK___, it is not satisfactory.",a:"work out",suf:""},{s:"The switch to the new system ___BLANK___ a lot better than anyone expected.",a:"worked out",suf:"ed"},{s:"She said that living with her in-laws wasn't ___BLANK___ very well.",a:"working out",suf:"ing"}]},
+  "aim at": {m:"When you point a weapon at people or things, you aim it at them.", q:[{s:"The new taw is ___BLANK___ reducing crime in the streets.",a:"aimed at",suf:"ed"}]},
+  "ask for": {m:"When you ask for something, you tell someone that you want it.", q:[{s:"My wife might ___BLANK___ more vacation time instead of a raise.",a:"ask for",suf:""},{s:"I'm warning you — if you keep doing that, you're ___BLANK___ trouble.",a:"asking for",suf:"ing"}]},
+  "ask out": {m:"When you ask people out, you ask them to go with you to a place of entertainment in order to have fun and spend time together.", q:[{s:"Being ___BLANK___ by Tom was quite a surprise to Judy.",a:"asked out",suf:"ed"}]},
+  "back off": {m:"When you move away from danger or a person you are arguing or fighting with in order to avoid injury or a more serious fight or argument, you back...", q:[{s:"When you tell people to ___BLANK___, you are warning them that you are becoming angry and that a fight or argument is likely.",a:"back off",suf:""},{s:"You'd better ___BLANK___.",a:"back off",suf:""}]},
+  "beef up": {m:"When you beef up security or some other arrangement to prevent or deal with a problem, you make this arrangement stronger.", q:[{s:"After the terrorist attack, security was ___BLANK___ at the embassy.",a:"beefed up",suf:"ed"},{s:"The hospital decided to ___BLANK___ its emergency facilities.",a:"beef up",suf:""}]},
+  "believe in": {m:"When you believe in something or believe in doing something, you have a strong opinion about something that is important to you.", q:[{s:"I ___BLANK___ working hard and saving money.",a:"believe in",suf:""},{s:"Maria doesn't ___BLANK___ sex before marriage.",a:"believe in",suf:""},{s:"Do you ___BLANK___ ghosts?",a:"believe in",suf:""}]},
+  "blow out": {m:"When a flame blows out or is blown out by a strong wind, it stops burning.", q:[{s:"When you ___BLANK___ a flame, you use your breath to make the flame stop burning.",a:"blow out",suf:""},{s:"Don't open the window — the candles will ___BLANK___.",a:"blow out",suf:""}]},
+  "blow up": {m:"When something blows up or when someone blows something up, it explodes.", q:[{s:"It always takes me an hour or more to ___BLANK___ the balloons for a party.",a:"blow up",suf:""}]},
+  "boil down to": {m:"When you say that something boils down to something else, you are saying that it is the basic cause of a more complicated situation or problem.", q:[{s:"Most of the crime in this city ___BLANK___ drugs.",a:"boils down to",suf:"s"},{s:"My decision to stay at this awful job ___BLANK___ one thing — money.",a:"boils down to",suf:"s"}]},
+  "bump into": {m:"When you bump into things or people, you accidentally hit them with your body.", q:[{s:"Would you please move these boxes — I keep ___BLANK___ them.",a:"bumping into",suf:"ing"},{s:"Run into is the same as ___BLANK___.",a:"bump into",suf:""},{s:"We ___BLANK___ Sarah at the mall today.",a:"bumped into",suf:"ed"}]},
+  "burn out": {m:"When a fire, candle, or other flame stops burning because it has no more fuel, it burns out.", q:[{s:"We need more wood; the fire has ___BLANK___.",a:"burned out",suf:"ed"},{s:"Don't worry; the sun won't ___BLANK___ for another four billion years.",a:"burn out",suf:""},{s:"These new bulbs are guaranteed not to ___BLANK___ for ten years.",a:"burn out",suf:""}]},
+  "burn up": {m:"When something is completely destroyed by heat or fire, it burns up.", q:[{s:"The meteor ___BLANK___ in the atmosphere.",a:"burned up",suf:"ed"},{s:"The rocket's fuel will ___BLANK___ after only forty seconds.",a:"burn up",suf:""}]},
+  "burst out": {m:"When you burst out laughing or crying, you begin laughing or crying loudly and suddenly.", q:[{s:"Heather ___BLANK___ laughing when I fell into the swimming pool.",a:"burst out",suf:""},{s:"When Sam heard the news, he ___BLANK___ crying.",a:"burst out",suf:""}]},
+  "call in": {m:"When you call your place of employment to say you cannot work that day because you are sick, you call in or call in sick.", q:[{s:"The manager was angry when her secretary ___BLANK___ three days in a row.",a:"called in",suf:"ed"},{s:"___BLANK___ sick too often is a good way to get fired.",a:"Calling in",suf:"ing"}]},
+  "call up": {m:"When you call people up, you call them on the telephone.", q:[{s:"Every evening I'm ___BLANK___ by charities asking for money.",a:"called up",suf:"ed"}]},
+  "calm down": {m:"When you calm down, you become less active, nervous, or upset.", q:[{s:"I was very nervous about the test, but I ___BLANK___ when I saw how easy it was.",a:"calmed down",suf:"ed"}]},
+  "care for": {m:"When you care for children or people who are old or sick, you provide them with the food or medicine they need or you do things to help them.", q:[{s:"The nurses have to ___BLANK___ several very sick patients.",a:"care for",suf:""},{s:"I asked Sally to go to the dance, but she said that dancing is not something she ___BLANK___.",a:"cares for",suf:"s"}]},
+  "catch on": {m:"When a fashion or habit becomes popular and is adopted by many people, it catches on.", q:[{s:"If his striped business suits ___BLANK___, the designer will become famous.",a:"catch on",suf:""},{s:"When Sally studies something, she usually ___BLANK___ right away.",a:"catches on",suf:"es"}]},
+  "cheat on": {m:"When you cheat on your sexual partner, you have sex or a romantic relationship with another person.", q:[{s:"Sarah filed for divorce after she caught George ___BLANK___ her.",a:"cheating on",suf:"ing"},{s:"She was ___BLANK___ me with my best friend!",a:"cheating on",suf:"ing"},{s:"The teacher caught Ali ___BLANK___ the exam.",a:"cheating on",suf:"ing"}]},
+  "clean out": {m:"When you clean something out, you clean the inside completely so that no dirt, dust, trash, and so on, remains inside.", q:[{s:"We ___BLANK___ our garage every spring.",a:"clean out",suf:""}]},
+  "clear out": {m:"When you clear out a place, you remove things that are unwanted or in the way in order to make more room or to make the place cleaner.", q:[{s:"The car dealer had a sale so that he could ___BLANK___ some space for the new cars.",a:"clear out",suf:""}]},
+  "clear up": {m:"When a problem, misunderstanding, or disease goes away, it clears up.", q:[{s:"The misunderstanding ___BLANK___ right away after we talked about it.",a:"cleared up",suf:"ed"},{s:"My rash is ___BLANK___ by itself.",a:"clearing up",suf:"ing"}]},
+  "close down": {m:"When you close down a business or a business is closed down, it closes permanently or for a long time.", q:[{s:"The ski resort will ___BLANK___ for the summer on May 1.",a:"close down",suf:""}]},
+  "come about": {m:"When something comes about, it happens, usually as a result of a series of events and actions.", q:[{s:"How did that ___BLANK___?",a:"come about",suf:""},{s:"Several major medical advances have ___BLANK___ in the last fifty years.",a:"come about",suf:""}]},
+  "come down": {m:"When you move to a lower level socially or financially and receive less respect from other people because of this change, you come down in life.", q:[{s:"Hank certainly has ___BLANK___ in life — he lost his job, house, and family because of his gambling problem.",a:"come down",suf:""},{s:"He has really ___BLANK___ in life.",a:"come down",suf:""}]},
+  "come down to": {m:"When the key to understanding a situation or problem is knowledge and consideration of a certain aspect of the situation or problem, this aspect...", q:[{s:"Learning a language ___BLANK___ practice, practice, practice.",a:"comes down to",suf:"s"},{s:"What it ___BLANK___ is whether you're willing to deal with your drinking problem.",a:"comes down to",suf:"s"}]},
+  "come from": {m:"When you come from a place, you were born there or lived there previously.", q:[{s:"When you ___BLANK___ a family or a social situation, your past experience helps to explain your present attitudes and behavior.",a:"come from",suf:""},{s:"Mike ___BLANK___ Alaska, so he's used to cold weather.",a:"comes from",suf:"s"},{s:"The word \"admiral\" ___BLANK___ an Arabic word.",a:"comes from",suf:"s"}]},
+  "come in": {m:"When a train, bus, airplane, or ship comes in, it arrives.", q:[{s:"Do you know when the train from Kankakee ___BLANK___?",a:"comes in",suf:"s"},{s:"David's plane hasn't ___BLANK___ yet.",a:"come in",suf:""},{s:"The manager is angry with Linda because she ___BLANK___ late every day.",a:"comes in",suf:"s"}]},
+  "come off": {m:"When something comes off, it becomes detached from what it was attached or fastened to.", q:[{s:"The attack didn't ___BLANK___ the way the general planned it.",a:"come off",suf:""},{s:"Oh, ___BLANK___ it!",a:"come off",suf:""}]},
+  "come on": {m:"When an electrical device or machine comes on, it begins to operate, usually automatically.", q:[{s:"When you open the refrigerator door, the light ___BLANK___ automatically.",a:"comes on",suf:"s"},{s:"Do you know when the news will ___BLANK___?",a:"come on",suf:""},{s:"___BLANK___, try it!",a:"Come on",suf:""}]},
+  "come through": {m:"When you are in a place and people or things come through it, they pass from one side to the other side where you are.", q:[{s:"Aunt Sally promised she'd ___BLANK___ Milwaukee on her way to Indianapolis.",a:"come through",suf:""},{s:"The professor's enthusiasm for the subject really ___BLANK___ in his lectures.",a:"comes through",suf:"s"}]},
+  "come up": {m:"When you move to a higher social or professional position, you come up.", q:[{s:"I don't agree with Jim about anything, so if politics ___BLANK___, I just leave the room.",a:"comes up",suf:"s"},{s:"I'm sorry I can't go to your party; something important has ___BLANK___.",a:"come up",suf:""}]},
+  "cool off": {m:"When the temperature of a thing or place becomes lower, it cools off.", q:[{s:"It was really hot yesterday, but it ___BLANK___ in the evening.",a:"cooled off",suf:"ed"},{s:"This is too hot — I'll eat it after it ___BLANK___.",a:"cools off",suf:"s"}]},
+  "count up": {m:"When you count all of something to see how many of them there are, you count them up.", q:[{s:"___BLANK___ the yes and no votes is going to take a long time.",a:"Counting up",suf:"ing"}]},
+  "cover up": {m:"When you cover something completely, you cover it up.", q:[{s:"There's no point in trying to ___BLANK___ the crime.",a:"cover up",suf:""}]},
+  "cross off": {m:"When you cross something off a list, you draw a line through it to remove it from the list.", q:[{s:"Why was my name ___BLANK___ the invitation list?",a:"crossed off",suf:"ed"}]},
+  "cut out": {m:"When you cut out part of a film, television program, book, magazine, and so on, you remove that part.", q:[{s:"Before the book was published, the parts that were critical of the king had to be ___BLANK___ of Chapter 4.",a:"cut out",suf:""},{s:"When you ___BLANK___ doing something, you stop doing it.",a:"cut out",suf:""}]},
+  "do away with": {m:"When you do away with something, you eliminate it or prohibit it.", q:[{s:"The woman was accused of ___BLANK___ her husband with arsenic.",a:"doing away with",suf:"ing"}]},
+  "dress up": {m:"When you dress up, you wear very nice clothes, often for a special occasion.", q:[{s:"You should always ___BLANK___ for a job interview.",a:"dress up",suf:""}]},
+  "dry out": {m:"When something dries out or something dries it out, all the water or other liquid in it goes away.", q:[{s:"After the flood, it took weeks for our house to ___BLANK___.",a:"dry out",suf:""}]},
+  "empty out": {m:"When you completely remove the contents of a space or container, you empty it out.", q:[{s:"The police officer told me to ___BLANK___ my pockets.",a:"empty out",suf:""}]},
+  "fall off": {m:"When people or things drop to a lower level from a higher place, they fall off the place where they were.", q:[{s:"Be careful you don't ___BLANK___ your bicycle.",a:"fall off",suf:""}]},
+  "fight back": {m:"When you fight back, you fight, either physically or with words, someone or something that attacked you first.", q:[{s:"After being accused of corruption, the senator said she would ___BLANK___ and prove her innocence.",a:"fight back",suf:""},{s:"I had to ___BLANK___ the urge to punch him in the nose.",a:"fight back",suf:""}]},
+  "figure on": {m:"When you figure on something, you expect it or plan for it.", q:[{s:"I didn't ___BLANK___ such cold weather.",a:"figure on",suf:""},{s:"You can ___BLANK___ spending a least hundred bucks if you're going to that restaurant.",a:"figure on",suf:""}]},
+  "fill up": {m:"When you fill something up, you fill it completely.", q:[{s:"My radiator must be leaking; it has to be ___BLANK___ with water every day.",a:"filled up",suf:"ed"},{s:"The hotels in Rio de Janeiro always ___BLANK___ at carnival time.",a:"fill up",suf:""}]},
+  "fix up": {m:"When you fix up a place, such as a building, street, or park, you repair and decorate it.", q:[{s:"The city decided to ___BLANK___ the park.",a:"fix up",suf:""}]},
+  "flip out": {m:"When you flip out, you become very upset or very angry.", q:[{s:"Keep your hands off Jim's computer — he'll ___BLANK___ if you screw it up.",a:"flip out",suf:""}]},
+  "float around": {m:"When something is floating around a place, it is there somewhere, though you are not sure exactly where.", q:[{s:"I don't know where the stapler is, but it's ___BLANK___ here somewhere.",a:"floating around",suf:"ing"},{s:"The new schedule was ___BLANK___ the office yesterday.",a:"floating around",suf:"ing"},{s:"There's a rumor ___BLANK___ that the factory's going to be closed.",a:"floating around",suf:"ing"}]},
+  "fool around": {m:"When you waste time playing or doing silly or unimportant things, you fool around.", q:[{s:"Goof around is the same as ___BLANK___.",a:"fool around",suf:""},{s:"He spends his time ___BLANK___ instead of looking for a job.",a:"fooling around",suf:"ing"}]},
+  "freak out": {m:"When you freak out, you become very upset or very angry.", q:[{s:"Melanie ___BLANK___ when she learned that her husband had been arrested for murder.",a:"freaked out",suf:"ed"}]},
+  "get ahead": {m:"When you get ahead, you become more successful and make progress in your job or your life.", q:[{s:"With your pessimistic attitude, you'll never ___BLANK___.",a:"get ahead",suf:""}]},
+  "get back at": {m:"When you get back at people, you do something bad to them because they have done something bad to you.", q:[{s:"He'll definitely ___BLANK___ you someday.",a:"get back at",suf:""},{s:"She wants to ___BLANK___ her ex-husband for the way he treated her.",a:"get back at",suf:""}]},
+  "get off": {m:"When you get off a bus, airplane, or train, you leave it.", q:[{s:"You can't ___BLANK___ the train while it's moving.",a:"get off",suf:""},{s:"Why don't you ___BLANK___ the couch and help me?",a:"get off",suf:""},{s:"___BLANK___ your bicycle and come inside.",a:"Get off",suf:""}]},
+  "get on": {m:"When you move your body toward something and stand, sit, or lie on it, you get on it.", q:[{s:"The nurse asked me to take off my shirt and ___BLANK___ the examination table.",a:"get on",suf:""},{s:"If you ___BLANK___ that chair you can reach the top shelf.",a:"get on",suf:""}]},
+  "get out of": {m:"When you get out of something or get out of doing something you must do but do not want to do, you find a way to avoid it.", q:[{s:"The boss wants me to work a double shift, but I'll ___BLANK___ it.",a:"get out of",suf:""}]},
+  "get to": {m:"When you get to a place, you arrive there.", q:[{s:"When you ___BLANK___ work,you arrive at the place where you work.",a:"get to",suf:""},{s:"When I run, I always try to ___BLANK___ five miles before I quit.",a:"get to",suf:""}]},
+  "get up": {m:"When you get up or someone gets you up, you rise from your bed.", q:[{s:"Stand up is similar to ___BLANK___.",a:"get up",suf:""}]},
+  "go after": {m:"When you chase and try to physically stop or to attack people, you go after them.", q:[{s:"Captain Morgan was ordered to ___BLANK___ the enemy soldiers.",a:"go after",suf:""},{s:"Federal prosecutors are now ___BLANK___ the top drug dealers.",a:"going after",suf:"ing"},{s:"The senator introduced a bill designed to ___BLANK___ deadbeat dads.",a:"go after",suf:""}]},
+  "go around": {m:"When people or things follow a circular path and return to the same place, they go around.", q:[{s:"It took seven days to ___BLANK___ the island.",a:"go around",suf:""},{s:"The disk drives in computers ___BLANK___ very fast.",a:"go around",suf:""}]},
+  "go beyond": {m:"When people or things are better or worse, or do something in a better or worse way than is normal or expected, they go beyond what is normal or...", q:[{s:"I think it ___BLANK___ good — it's fantastic!",a:"goes beyond",suf:"es"}]},
+  "go by": {m:"When people go by a place or thing, they pass near that place or thing.", q:[{s:"When a thing ___BLANK___ or goes by you, it passes near you.",a:"goes by",suf:"es"},{s:"We watched the parade ___BLANK___.",a:"go by",suf:""},{s:"Let's ___BLANK___ Paul's house to get his tools before we work on your car.",a:"go by",suf:""}]},
+  "go down": {m:"When something goes down in a certain way, people react to or perceive it in this way.", q:[{s:"The new no smoking policy didn't ___BLANK___ very well with the smokers in the office.",a:"go down",suf:""},{s:"If your computer terminal ___BLANK___, you can use the one in the next office.",a:"goes down",suf:"es"},{s:"After the sun ___BLANK___, it'll get a little cooler.",a:"goes down",suf:"es"}]},
+  "go for": {m:"When you go for something, you like it a lot.", q:[{s:"Erik really ___BLANK___ scuba diving.",a:"goes for",suf:"es"},{s:"I don't ___BLANK___ jazz.",a:"go for",suf:""}]},
+  "go in": {m:"When something goes in or goes into a place, container, enclosure, and so on, it belongs there, fits there, or can be put there.", q:[{s:"That dish ___BLANK___ the cabinet next to the stove.",a:"goes in",suf:"es"},{s:"All those clothes will never ___BLANK___ this small suitcase.",a:"go in",suf:""},{s:"The National Guard was ordered to ___BLANK___ and stop the riot.",a:"go in",suf:""}]},
+  "go off": {m:"When a gun goes off, it fires.", q:[{s:"When a bomb ___BLANK___, it explodes.",a:"goes off",suf:"es"},{s:"When an alarm or alarm clock ___BLANK___, it makes a loud noise.",a:"goes off",suf:"es"},{s:"Come on is the opposite of ___BLANK___.",a:"go off",suf:""}]},
+  "go with": {m:"When one thing is usually or always found with another, they go with each other.", q:[{s:"A lot of responsibility ___BLANK___ being a doctor.",a:"goes with",suf:"es"},{s:"I never wanted to own an old house because of all the maintenance that ___BLANK___ it.",a:"goes with",suf:"es"},{s:"You can't buy the cup without the saucer that ___BLANK___ it.",a:"goes with",suf:"es"}]},
+  "goof around": {m:"When you waste time playing or doing silly or unimportant things, you goof around.", q:[{s:"Fool around is the same as ___BLANK___.",a:"goof around",suf:""},{s:"He constantly ___BLANK___ and creates problems.",a:"goofs around",suf:"s"}]},
+  "hang around": {m:"When you hang around or hang around doing something, you stay in a place without a purpose for being there or because you are waiting for someone...", q:[{s:"I had to ___BLANK___ for three hours waiting for the bus.",a:"hang around",suf:""},{s:"Bob's been ___BLANK___ the house all day.",a:"hanging around",suf:"ing"},{s:"___BLANK___ for a while, and when I finish my homework we can watch TV.",a:"Hang around",suf:""}]},
+  "hang out": {m:"When you hang out at a place, you spend time there without any important purpose.", q:[{s:"Hang around is similar to ___BLANK___.",a:"hang out",suf:""},{s:"It seems as if she ___BLANK___ at the beach every day.",a:"hangs out",suf:"s"}]},
+  "head for": {m:"When you head for a certain location, you move toward it.", q:[{s:"When you are headed for or are ___BLANK___ a certain location, you are planning to go there or you have stopped and will resume going there.",a:"heading for",suf:"ing"},{s:"Head toward is the same as ___BLANK___.",a:"head for",suf:""},{s:"Tomorrow we're going to leave Des Moines and ___BLANK___ California.",a:"head for",suf:""}]},
+  "head toward": {m:"When you head toward a certain location, you move toward it.", q:[{s:"Head for is the same as ___BLANK___.",a:"head toward",suf:""},{s:"The escaped convicts must have ___BLANK___ Mexico.",a:"headed toward",suf:"ed"}]},
+  "hear of": {m:"When you learn about something for the first time, you hear of it.", q:[{s:"I told my real estate agent, \"If you ___BLANK___ a good deal on a three-bedroom house, please call me right away.\"",a:"hear of",suf:""},{s:"I won't ___BLANK___ it!",a:"hear of",suf:""}]},
+  "hit on": {m:"When you think of an interesting idea or a solution to a problem, you hit on it.", q:[{s:"I think I've ___BLANK___ a way to solve this problem.",a:"hit on",suf:""},{s:"She was ___BLANK___ by every guy there.",a:"hit on",suf:""}]},
+  "hold out": {m:"When you hold out your hand, you extend it in front of your body so that someone can shake hands with you or put something in your hand.", q:[{s:"___BLANK___ is similar to put out.",a:"Hold out",suf:""},{s:"I haven't had a cigarette in three days, and I don't know how much longer I can ___BLANK___.",a:"hold out",suf:""}]},
+  "hurry up": {m:"When you hurry up, you do something quickly.", q:[{s:"If we don't ___BLANK___, we're going to miss the beginning of the movie.",a:"hurry up",suf:""},{s:"When you say \"___BLANK___,\" to people, you are telling them to do something more quickly.",a:"Hurry up",suf:""}]},
+  "keep at": {m:"When you keep at it, you continue with an activity even though it may be difficult.", q:[{s:"When you say \"___BLANK___ it\" to people, you encourage them to finish with an activity that is difficult.",a:"Keep at",suf:""},{s:"I know this work is difficult, but you have to ___BLANK___ it.",a:"keep at",suf:""},{s:"___BLANK___ it; you're almost finished.",a:"Keep at",suf:""}]},
+  "keep from": {m:"When you keep from doing something, you do not do it even though it is hard not to.", q:[{s:"The movie was so sad that I couldn't ___BLANK___ crying.",a:"keep from",suf:""}]},
+  "keep off": {m:"When you keep off something, you do not walk or stand on it.", q:[{s:"The sign says \"___BLANK___ the grass.\" You should keep your kids off the streets and in school.",a:"Keep off",suf:""}]},
+  "kick back": {m:"When you kick back, you relax.", q:[{s:"Tonight I'm going to buy a case of beer and ___BLANK___.",a:"kick back",suf:""},{s:"Let's ___BLANK___ and watch the football game tonight.",a:"kick back",suf:""}]},
+  "knock off": {m:"When you knock something off, you either accidentally or deliberately use force to make it fall from a place above the ground to the ground below.", q:[{s:"Why don't you ___BLANK___?",a:"knock off",suf:""}]},
+  "knock out": {m:"When you knock people out, you hit them hard enough to cause them to lose consciousness.", q:[{s:"When people are ___BLANK___, they are hit by someone or something hard enough to cause them to lose consciousness.",a:"knocked out",suf:"ed"}]},
+  "know about": {m:"When you know about a situation, plan, or other information, you are aware of it.", q:[{s:"Maybe he doesn't ___BLANK___ the schedule change.",a:"know about",suf:""}]},
+  "let out": {m:"When you allow animals or people to leave a place by giving permission or opening a door, you let them out.", q:[{s:"Heather knew Jim was lying again, and ___BLANK___ a sigh.",a:"let out",suf:""},{s:"The lion ___BLANK___ a loud roar before he attacked the hunter.",a:"let out",suf:""}]},
+  "lie around": {m:"When you lie around or lie around doing something, you recline and relax and do not do anything important.", q:[{s:"I'm just going to ___BLANK___.",a:"lie around",suf:""},{s:"All my sister ever does is ___BLANK___ watching soap operas.",a:"lie around",suf:""}]},
+  "lift up": {m:"When you lift up something, you use your hands to raise it above the surface that it was on.", q:[{s:"___BLANK___ the cover and look in the box.",a:"Lift up",suf:""}]},
+  "light up": {m:"When you shine lights on something or attach lights to something, you light it up.", q:[{s:"Here are the matches — let's ___BLANK___.",a:"light up",suf:""}]},
+  "line up": {m:"When people or things form a row, they line up.", q:[{s:"If this bolt doesn't ___BLANK___ with that hole, the lock won't work.",a:"line up",suf:""}]},
+  "live with": {m:"When you live with someone, you live at the same address.", q:[{s:"When you say that one person ___BLANK___ a person of the opposite sex, you mean that they live in the same place but are not married.",a:"lives with",suf:"s"},{s:"Jake committed suicide rather than ___BLANK___ the shame of what he had done.",a:"live with",suf:""}]},
+  "lock in": {m:"When you lock people in, you lock a door or gate so that they cannot leave a room, building, or other place.", q:[{s:"Seven people died because they were ___BLANK___ the burning building.",a:"locked in",suf:"ed"},{s:"I met with the loan officer at the bank and ___BLANK___ a mortgage rate.",a:"locked in",suf:"ed"}]},
+  "lock up": {m:"When you lock all the doors and windows of a building, you lock it up.", q:[{s:"The manager always ___BLANK___ before he goes home.",a:"locks up",suf:"s"},{s:"Whoever committed that terrible crime ought to be ___BLANK___ forever.",a:"locked up",suf:"ed"}]},
+  "look around": {m:"When you turn your head to see what is behind you or around you, you look around.", q:[{s:"I heard a sound, and I ___BLANK___ to see who it was.",a:"looked around",suf:"ed"},{s:"Sally ___BLANK___ the room and didn't recognize anyone.",a:"looked around",suf:"ed"},{s:"You should ___BLANK___ before you decide whether you want to buy the house.",a:"look around",suf:""}]},
+  "look at": {m:"When you focus your eyes on people or things, you look at them.", q:[{s:"I ___BLANK___ her and told her I loved her.",a:"looked at",suf:"ed"},{s:"___BLANK___ me when I talk to you!",a:"Look at",suf:""},{s:"The mechanic ___BLANK___ my car but couldn't find anything wrong with it.",a:"looked at",suf:"ed"}]},
+  "look up to": {m:"When you look up to people, you admire and respect them.", q:[{s:"I've always ___BLANK___ my father because of his honesty and concern for others.",a:"looked up to",suf:"ed"},{s:"You should ___BLANK___ people who have overcome difficulties to become successful.",a:"look up to",suf:""}]},
+  "luck out": {m:"When you luck out, something good happens to you or you avoid something bad happening to you.", q:[{s:"Todd ___BLANK___ when he found that lottery ticket on the ground; it was a $ 1 million winner.",a:"lucked out",suf:"ed"},{s:"I guess I ___BLANK___.",a:"lucked out",suf:"ed"}]},
+  "make for": {m:"When something causes another thing, situation, or event to have a certain quality or characteristic, it makes for the other thing, situation, or...", q:[{s:"Alcohol and teenage drivers ___BLANK___ trouble.",a:"make for",suf:""},{s:"The enemy soldiers are getting closer — let's ___BLANK___ the hills.",a:"make for",suf:""}]},
+  "make of": {m:"What you make of something is your understanding or opinion of it.", q:[{s:"So what did you ___BLANK___ the prime minister's speech?",a:"make of",suf:""},{s:"What he said was so strange that I didn't know what to ___BLANK___ it.",a:"make of",suf:""}]},
+  "make out": {m:"When you can make something out, you can see it or hear it even though it is difficult to do so.", q:[{s:"The audio system is so bad in the bus station that I can never ___BLANK___ what the speakers are saying.",a:"make out",suf:""}]},
+  "mess up": {m:"When you mess up a place, you make it dirty or disorganized.", q:[{s:"When you ___BLANK___ a plan or arrangement, you interfere with it and prevent it from happening as planned.",a:"mess up",suf:""},{s:"___BLANK___ is similar to screw up.",a:"Mess up",suf:""}]},
+  "mix up": {m:"When you mix something up that has two or more ingredients, you stir it so that the ingredients will be thoroughly combined.", q:[{s:"An electric mixer will ___BLANK___ the ingredients better than a hand mixer.",a:"mix up",suf:""}]},
+  "monkey around with": {m:"When you adjust or try to repair mechanical devices even though you do not have permission or do not have the skill to do it properly, you monkey...", q:[{s:"I ___BLANK___ my camera, and I think maybe I fixed it.",a:"monkeyed around with",suf:"ed"},{s:"Frank was ___BLANK___ my printer, and now it doesn't work.",a:"monkeying around with",suf:"ing"}]},
+  "move inlinto": {m:"When you move in or move into a place, you bring your furniture and other personal possessions into a place where you will live.", q:[{s:"Move out is the opposite of ___BLANK___.",a:"move inlinto",suf:""}]},
+  "open up": {m:"When you open something up, you reveal what is inside so that people can see it.", q:[{s:"Mike's going to ___BLANK___ his computer to try to find the problem.",a:"open up",suf:""},{s:"I was driving through town, and I noticed that a new book store has ___BLANK___ on Maple Street.",a:"opened up",suf:"ed"}]},
+  "pay for": {m:"When you give someone money in exchange for something, you pay for it or pay someone for it.", q:[{s:"Can I ___BLANK___ this stuff with a credit card?",a:"pay for",suf:""},{s:"Young people think that drugs are harmless, but they'll ___BLANK___ their foolishness someday.",a:"pay for",suf:""}]},
+  "pay up": {m:"When you pay up, you pay all the money you owe to a person, bank, and so on, usually as a result of pressure to pay the money.", q:[{s:"A guy from the collection agency called and told me I'd better ___BLANK___.",a:"pay up",suf:""},{s:"I wasn't surprised when the insurance company refused to ___BLANK___.",a:"pay up",suf:""}]},
+  "pick on": {m:"When you pick on people, you continually tease and criticize them.", q:[{s:"Susie, you shouldn't ___BLANK___ your little brother.",a:"pick on",suf:""}]},
+  "pick out": {m:"When you choose something from a group because you prefer it to the others in the group, you pick it out.", q:[{s:"Have you ___BLANK___ a dress to wear to the party yet?",a:"picked out",suf:"ed"}]},
+  "plan ahead": {m:"When you plan ahead, you plan for a future situation or activity so that you will not have a problem then.", q:[{s:"___BLANK___ is similar to think ahead.",a:"Plan ahead",suf:""},{s:"She always ___BLANK___ in case there's a problem.",a:"plans ahead",suf:"s"}]},
+  "plan for": {m:"When you make preparations for something in the future, you plan for it.", q:[{s:"The festival was a disaster because they didn't ___BLANK___ such a huge crowd.",a:"plan for",suf:""}]},
+  "plan on": {m:"When you plan on something, you expect it.", q:[{s:"You should ___BLANK___ at least two years to finish the master's degree program.",a:"plan on",suf:""}]},
+  "point to": {m:"When you indicate people or things with your hand or a finger, you point to them.", q:[{s:"When an arrow or a sign indicates something, it ___BLANK___ it.",a:"points to",suf:"s"},{s:"The waitress couldn't hear me, so I ___BLANK___ my empty glass and she understood.",a:"pointed to",suf:"ed"},{s:"The prosecutor asked, \"Can you ___BLANK___ the man you saw carrying the gun?\"",a:"point to",suf:""}]},
+  "pull over": {m:"When you are driving and then move your vehicle to the side of the road, reduce your speed, and then stop, you pull over or pull your vehicle over.", q:[{s:"I ___BLANK___ to fix a flat tire.",a:"pulled over",suf:"ed"},{s:"Jim was driving on the wrong side of the road, and he got ___BLANK___ by the state police.",a:"pulled over",suf:"ed"}]},
+  "put in": {m:"When you construct or install something in a building, you put it in.", q:[{s:"We're having new carpeting ___BLANK___ next week.",a:"put in",suf:""},{s:"Margaret Cummings was ___BLANK___ charge of the sales department.",a:"put in",suf:""}]},
+  "put inlinto": {m:"When you put something in or put something into a container, storage place, or building, you place it inside.", q:[{s:"Take out is the opposite of ___BLANK___.",a:"put inlinto",suf:""}]},
+  "put out": {m:"When you extinguish a fire or something that is burning, you put it out.", q:[{s:"It was two hours before the fire was ___BLANK___.",a:"put out",suf:""}]},
+  "rip up": {m:"When you tear paper or cloth into many pieces, you rip it up.", q:[{s:"Always ___BLANK___ a check before you put it in the wastebasket.",a:"rip up",suf:""}]},
+  "run across": {m:"When people or things run across a place, room, or building, they move from one side to the other very quickly.", q:[{s:"It's crazy to ___BLANK___ the street through the traffic instead of waiting for the light.",a:"run across",suf:""},{s:"Come across is similar to ___BLANK___.",a:"run across",suf:""}]},
+  "run down": {m:"When vehicles or people driving vehicles hit and injure or kill someone, they run that person down.", q:[{s:"The man was ___BLANK___ and killed by a speeding taxi.",a:"run down",suf:""},{s:"Let's ___BLANK___ the Christmas list and decide what to give everyone.",a:"run down",suf:""}]},
+  "run over": {m:"When you drive over people or things with a car, truck, or other vehicle causing damage, injury, or death, you run them over.", q:[{s:"John was ___BLANK___ by a bus and killed.",a:"run over",suf:""},{s:"Keep on eye on the bathtub so that it doesn't ___BLANK___.",a:"run over",suf:""},{s:"It's going to ___BLANK___ the side.",a:"run over",suf:""}]},
+  "screw up": {m:"When you damage something or do something wrong or badly, you screw up or you screw up what you are doing.", q:[{s:"He sure ___BLANK___.",a:"screwed up",suf:"ed"}]},
+  "see about": {m:"When you talk to someone to get permission for something or to arrange something, you see about it or see someone about it.", q:[{s:"Is Luis going to ___BLANK___ changing his flight from the fifth to the sixth?",a:"see about",suf:""},{s:"I'll ___BLANK___ that!",a:"see about",suf:""},{s:"We'll just ___BLANK___ that.",a:"see about",suf:""}]},
+  "settle for": {m:"When you settle for something, you accept it even though it may not be exactly what you want or need.", q:[{s:"He won't ___BLANK___ second best.",a:"settle for",suf:""}]},
+  "shake up": {m:"When something upsets, shocks, or frightens you badly, it shakes you up.", q:[{s:"You have to ___BLANK___ Italian dressing before you open the bottle.",a:"shake up",suf:""}]},
+  "sign out": {m:"When you sign out, you write your name on a list to show that you have left your workplace or some other place, such as a hotel or club.", q:[{s:"Wood usually forgets to ___BLANK___ when she leaves the dink.",a:"sign out",suf:""},{s:"Remember to ___BLANK___ your lab equipment before chemistry class.",a:"sign out",suf:""}]},
+  "slow down": {m:"When something causes people or things to do something more slowly, it slows them down.", q:[{s:"I was driving pretty fast, but I ___BLANK___ after I saw the police car.",a:"slowed down",suf:"ed"},{s:"Production at the factory ___BLANK___ when half the workers got sick.",a:"slowed down",suf:"ed"}]},
+  "stand around": {m:"When you stand around, you stand in a place wasting time and not doing anything useful.", q:[{s:"I have all this work to do, and you guys just ___BLANK___ watching me.",a:"stand around",suf:""},{s:"The manager told them to stop ___BLANK___ and get to work.",a:"standing around",suf:"ing"}]},
+  "stand for": {m:"When abbreviations, acronyms, or symbols represent longer words or groups of words, they stand for them.", q:[{s:"This flag ___BLANK___ freedom.",a:"stands for",suf:"s"},{s:"Cruelty to animals is one thing I will never ___BLANK___.",a:"stand for",suf:""},{s:"I told my son I wouldn't ___BLANK___ that kind of language in this house.",a:"stand for",suf:""}]},
+  "stand up": {m:"When you stand up, you change from a sitting position to a standing position.", q:[{s:"Get up is similar to ___BLANK___.",a:"stand up",suf:""},{s:"Everyone ___BLANK___ when the judge enters the courtroom.",a:"stands up",suf:"s"},{s:"When the students are sleepy, the teacher makes them ___BLANK___.",a:"stand up",suf:""}]},
+  "start off": {m:"When people or things start off a certain way, they are this way at the beginning of a process that changes them.", q:[{s:"Start out is similar to ___BLANK___.",a:"start off",suf:""},{s:"The day ___BLANK___ nice, but it got cold and cloudy.",a:"started off",suf:"ed"},{s:"I thought the movie was good, but it ___BLANK___ kind of boring.",a:"started off",suf:"ed"}]},
+  "start out": {m:"When you begin something, you start out.", q:[{s:"___BLANK___ is used to discuss how the end of something was different from its beginning.",a:"Start out",suf:""},{s:"Nancy ___BLANK___ as a secretary, thinking she might have a future with this company, but she doesn't feel that way anymore.",a:"started out",suf:"ed"}]},
+  "start up": {m:"When an electrical or mechanical device starts up or someone starts it up, it begins to operate.", q:[{s:"Jane borrowed the money she needed to ___BLANK___ her business from her uncle.",a:"start up",suf:""}]},
+  "stay off": {m:"When you stay off something, you don't walk or sit on it.", q:[{s:"You kids can play in the living room, but ___BLANK___ the Persian rug.",a:"stay off",suf:""},{s:"What can I do to get my cat to ___BLANK___ the kitchen counter?",a:"stay off",suf:""}]},
+  "stay up": {m:"When something stays up, it remains in a place that is higher than ground level.", q:[{s:"That shelf won't ___BLANK___ if you put all those books on it.",a:"stay up",suf:""},{s:"Judy's tired because she ___BLANK___ until dawn studying for a chemistry test.",a:"stayed up",suf:"ed"},{s:"Don't ___BLANK___ late — tomorrow's a school day.",a:"stay up",suf:""}]},
+  "step on": {m:"When you step on something, you place your foot on it.", q:[{s:"If the carpenter ___BLANK___ a nail, she'll have to go to the hospital for a tetanus shot.",a:"steps on",suf:"s"},{s:"Hank needed to get to the airport in fifteen minutes, so he told the taxi driver to ___BLANK___ it.",a:"step on",suf:""}]},
+  "stick around": {m:"When you stick around, you stay where you are.", q:[{s:"Can you ___BLANK___?",a:"stick around",suf:""},{s:"Don't go yet — ___BLANK___ until Sarah gets here; she'd love to see you.",a:"stick around",suf:""}]},
+  "stick out": {m:"When something sticks out, it extends from what it is attached to.", q:[{s:"Be careful walking in the woods, there are a lot of branches ___BLANK___.",a:"sticking out",suf:"ing"},{s:"I cut myself on a nail that was ___BLANK___ of the wall.",a:"sticking out",suf:"ing"}]},
+  "stick to": {m:"When one thing sticks to another, it remains attached to it.", q:[{s:"The magnet ___BLANK___ the chalkboard because there's metal underneath.",a:"sticks to",suf:"s"},{s:"I used the wrong glue, and the tiles didn't ___BLANK___ the floor.",a:"stick to",suf:""},{s:"Stick with is similar to ___BLANK___.",a:"stick to",suf:""}]},
+  "stick up": {m:"When you use a gun or other weapon to rob people, banks, or stores, you stick them up.", q:[{s:"Hold up is the same as ___BLANK___.",a:"stick up",suf:""},{s:"They're ___BLANK___ the bank.",a:"sticking up",suf:"ing"}]},
+  "stick with": {m:"When you stick with a habit, plan, or type of work, you continue as before, without change.", q:[{s:"Stick to is similar to ___BLANK___.",a:"stick with",suf:""},{s:"I'll ___BLANK___ writing letters by hand.",a:"stick with",suf:""},{s:"My wife wants me to switch to decaffeinated coffee, but I'm going to ___BLANK___ regular.",a:"stick with",suf:""}]},
+  "stop over": {m:"When you interrupt a journey (usually an airplane journey) for a short stay somewhere, you stop over.", q:[{s:"Would you like to ___BLANK___ after dinner and see our vacation pictures?",a:"stop over",suf:""}]},
+  "straighten out": {m:"When something is bent, crooked, or curved and you make it straight, you straighten it out.", q:[{s:"As the city grew, many of the winding streets were ___BLANK___.",a:"straightened out",suf:"ed"},{s:"Sort out is similar to ___BLANK___.",a:"straighten out",suf:""}]},
+  "switch off": {m:"When you switch off an electrical or mechanical device, you change the controls to stop it from producing or doing something.", q:[{s:"Turn off is similar to ___BLANK___.",a:"switch off",suf:""},{s:"Switch on is the opposite of ___BLANK___.",a:"switch off",suf:""},{s:"Try to remember to ___BLANK___ the lights when you leave the room.",a:"switch off",suf:""}]},
+};
+function inflectDistractor(headBase, restWords, suf, capitalize){
+  var head = headBase;
+  if(suf === 'ing'){ head = /e$/.test(head) && !/(ee|ie|oe)$/.test(head) ? head.slice(0,-1)+'ing' : head+'ing'; }
+  else if(suf === 'ed'){ head = /e$/.test(head) ? head+'d' : head+'ed'; }
+  else if(suf === 's'){ head = /(s|sh|ch|x|z)$/.test(head) ? head+'es' : head+'s'; }
+  else if(suf === 'es'){ head = head+'es'; }
+  var out = [head].concat(restWords).join(' ');
+  if(capitalize){ out = out.charAt(0).toUpperCase() + out.slice(1); }
+  return out;
+}
+
+/* ---------- phrasal verb game state ---------- */
+var pvPool = PV_TIER1, pvScore = 0, pvTotal = 0, pvAnswered = false, pvStats = {};
+var PV_STATS_KEY = 'pv-stats';
+
+async function pvInit(mode){
+  pvPool = (mode === 'pv300') ? PV_TIER2 : PV_TIER1;
+  pvScore = 0; pvTotal = 0;
+  try {
+    var res = await window.storage.get(PV_STATS_KEY, false);
+    pvStats = res ? JSON.parse(res.value) : {};
+  } catch(e){ pvStats = {}; }
+  showView('view-pv');
+  pvLoad();
+}
+async function pvSave(){ try{ await window.storage.set(PV_STATS_KEY, JSON.stringify(pvStats), false); }catch(e){} }
+function pvStatFor(v){ if(!pvStats[v]) pvStats[v]={correct:0,wrong:0}; return pvStats[v]; }
+function pvPick(){
+  var weights = pvPool.map(function(v){
+    var st=pvStatFor(v); var att=st.correct+st.wrong; var er=att>0? st.wrong/att : 0.5;
+    return 1 + er*5 + st.wrong;
+  });
+  var total = weights.reduce(function(a,b){return a+b;},0);
+  var r = Math.random()*total;
+  for(var i=0;i<pvPool.length;i++){ r-=weights[i]; if(r<=0) return pvPool[i]; }
+  return pvPool[pvPool.length-1];
+}
+function pvShowWeak(){
+  var w = pvPool.map(function(v){return {v:v, wrong:pvStatFor(v).wrong};})
+    .filter(function(x){return x.wrong>0;}).sort(function(a,b){return b.wrong-a.wrong;}).slice(0,3).map(function(x){return x.v;});
+  var el = document.getElementById('pv-weakspots');
+  el.innerHTML = w.length ? 'Showing up more often: <span class="chip">' + w.join('</span><span class="chip">') + '</span>' : 'Real sentences from a published phrasal-verb course book. Your progress is saved to your account.';
+}
+var pvCurrent = null;
+function pvLoad(){
+  pvAnswered = false;
+  var verb = pvPick();
+  var entry = PV_DATA[verb];
+  var q = entry.q[Math.floor(Math.random()*entry.q.length)];
+  pvCurrent = { verb: verb, meaning: entry.m, q: q };
+
+  document.getElementById('pv-round').textContent = 'Question ' + (pvTotal+1);
+  document.getElementById('pv-score').textContent = 'Score: ' + pvScore;
+  document.getElementById('pv-sentence').className = 'sentence';
+  document.getElementById('pv-sentence').innerHTML = q.s.replace('___BLANK___', '<span class="blank">______</span>');
+  document.getElementById('pv-feedback').textContent = '';
+  document.getElementById('pv-bonus').style.display = 'none';
+  document.getElementById('pv-next').style.display = 'none';
+  pvShowWeak();
+
+  var capitalize = /^[A-Z]/.test(q.a);
+  var distractVerbs = shuffle(pvPool.filter(function(v){return v!==verb;})).slice(0,3);
+  var distractTexts = distractVerbs.map(function(v){
+    var words = v.split(' ');
+    return inflectDistractor(words[0], words.slice(1), q.suf, capitalize);
+  });
+  var opts = shuffle([q.a].concat(distractTexts));
+  var el = document.getElementById('pv-options'); el.innerHTML='';
+  opts.forEach(function(opt){
+    var btn=document.createElement('button'); btn.className='opt'; btn.textContent=opt;
+    btn.onclick=function(){ pvAnswer(opt, btn); };
+    el.appendChild(btn);
+  });
+}
+async function pvAnswer(opt, btn){
+  if(pvAnswered) return; pvAnswered=true; pvTotal++;
+  var verb = pvCurrent.verb, meaning = pvCurrent.meaning, correctText = pvCurrent.q.a;
+  var ok = (opt===correctText); if(ok) pvScore++;
+  var st = pvStatFor(verb); if(ok) st.correct++; else st.wrong++;
+  await logAttempt('pv', ok);
+  await pvSave();
+  var children = document.getElementById('pv-options').children;
+  for(var i=0;i<children.length;i++){
+    var b=children[i]; b.disabled=true;
+    if(b.textContent===correctText) b.classList.add('correct'); else if(b===btn) b.classList.add('wrong');
+  }
+  var fb=document.getElementById('pv-feedback');
+  fb.textContent = ok ? ('Correct — ' + verb + ': ' + meaning) : ('Not quite. ' + verb + ' means: ' + meaning);
+  fb.style.color = ok ? '#0B7A5B' : '#C22C46';
+  if(ok && pvCurrent.q.a){
+    var otherQs = PV_DATA[verb].q.filter(function(qq){return qq!==pvCurrent.q;});
+    if(otherQs.length){
+      var alt = otherQs[Math.floor(Math.random()*otherQs.length)];
+      var bo=document.getElementById('pv-bonus'); bo.style.display='block';
+      bo.textContent = 'Another example: ' + alt.s.replace('___BLANK___', alt.a);
+    }
+  }
+  document.getElementById('pv-score').textContent = 'Score: ' + pvScore;
+  document.getElementById('pv-next').style.display='inline-block';
+  pvShowWeak();
+}
+document.getElementById('pv-next').onclick = pvLoad;
+document.getElementById('pv-back').onclick = function(){ showView('view-menu'); };
+document.getElementById('pv-end').onclick = async function(){ await pvSave(); showView('view-menu'); };
+
+document.getElementById('pv-reset').onclick = async function(){ pvStats={}; await pvSave(); pvShowWeak(); };
+
+/* ---------- translation game state ---------- */
+var TR_STATS_KEY = 'tr-stats';
+var TR_QUEUE_KEY = 'tr-queue';
+var TR_LEVELS = ['B2','C1','C2'];
+var TR_QUEUE_TARGET = 4;
+var TR_QUEUE_LOW_WATER = 1;
+var TR_BATCH_SIZE = 3;
+var trStats = { topics:{} };
+var trScore = 0, trTotal = 0, trLevel = 'B2';
+var trQueues = { B2: [], C1: [], C2: [] };
+var trQueueLoading = { B2: false, C1: false, C2: false };
+var LEVEL_DESC = {
+  B2: "clear, moderately complex sentences using common but varied vocabulary and fairly straightforward clause structure",
+  C1: "more complex syntax, some idiomatic expressions, and less frequent vocabulary",
+  C2: "near-native complexity, nuanced or rare vocabulary, and sophisticated clause structure"
+};
+
+async function trLoadStats(level){
+  try {
+    var res = await window.storage.get(TR_STATS_KEY + '-' + level, false);
+    return res ? JSON.parse(res.value) : { topics:{} };
+  } catch(e){ return { topics:{} }; }
+}
+async function trSave(){ try{ await window.storage.set(TR_STATS_KEY + '-' + trLevel, JSON.stringify(trStats), false); }catch(e){} }
+
+async function trLoadQueue(level){
+  try {
+    var res = await window.storage.get(TR_QUEUE_KEY + '-' + level, false);
+    return res ? JSON.parse(res.value) : [];
+  } catch(e){ return []; }
+}
+async function trSaveQueue(level, arr){ try{ await window.storage.set(TR_QUEUE_KEY + '-' + level, JSON.stringify(arr), false); }catch(e){} }
+
+function trWeakTopicsFor(stats){
+  return Object.keys(stats.topics).filter(function(t){ return stats.topics[t].wrong > 0; })
+    .sort(function(a,b){ return stats.topics[b].wrong - stats.topics[a].wrong; }).slice(0,3);
+}
+
+async function trFetchBatch(level, weakTopics, count){
+  var batchSize = Math.max(1, Math.min(count || TR_BATCH_SIZE, TR_BATCH_SIZE));
+  var topicHint = weakTopics.length ? (" Ideally include one story related to one of these challenging topics: " + weakTopics.join(', ') + ".") : "";
+  var systemPrompt = "You create language-learning exercises for an Italian speaker learning English at CEFR level " + level + ".\n" +
+    "Search the web once for notable news stories published very recently (this week) by BBC, TIME, or The New York Times." + topicHint + "\n" +
+    "Create " + batchSize + " different exercises. For each exercise, pick ONE short verbatim sentence or clause, under 15 words, whose vocabulary and structure matches CEFR level " + level + " complexity (" + LEVEL_DESC[level] + ").\n" +
+    "Return a JSON array of exactly " + batchSize + " objects. Every object must have exactly these fields:\n" +
+    "{\"source\": \"BBC News\" | \"TIME\" | \"The New York Times\", \"topic\": one short lowercase word from [politics, economy, technology, environment, health, sport, culture, science, society], \"english_sentence\": \"the exact short quoted sentence, under 15 words\", \"correct_translation\": \"an accurate, natural Italian translation\", \"distractor_1\": \"a plausible but clearly incorrect Italian translation\", \"distractor_2\": \"another plausible but clearly incorrect Italian translation\"}\n" +
+    "Return ONLY the raw JSON array. No markdown fences, no preamble.";
+  try {
+    var response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-5",
+        max_tokens: 700,
+        system: systemPrompt,
+        messages: [{ role: "user", content: "Generate the exercise batch now." }],
+        tools: [{ type: "web_search_20250305", name: "web_search" }]
+      })
+    });
+    if(!response.ok) throw new Error('HTTP ' + response.status);
+    var data = await response.json();
+    var textBlocks = (data.content || []).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n');
+    var clean = textBlocks.replace(/```json|```/g, '').trim();
+    var m = clean.match(/\[[\s\S]*\]/);
+    var parsed = JSON.parse(m ? m[0] : clean);
+    return Array.isArray(parsed) ? parsed.filter(Boolean).slice(0, batchSize) : [];
+  } catch(err){
+    console.warn('Translation batch fetch failed, using offline pack:', err);
+    return fallbackBatch(TR_FALLBACK[level] || TR_FALLBACK.B2, batchSize);
+  }
+}
+
+async function trTopUpQueue(level){
+  if(trQueueLoading[level]) return;
+  trQueueLoading[level] = true;
+  try {
+    var queue = await trLoadQueue(level);
+    if(queue.length >= TR_QUEUE_TARGET) return;
+    var stats = await trLoadStats(level);
+    var weakTopics = trWeakTopicsFor(stats);
+    var needed = Math.min(TR_BATCH_SIZE, TR_QUEUE_TARGET - queue.length);
+    var batch = await trFetchBatch(level, weakTopics, needed);
+    queue = queue.concat(batch).slice(0, TR_QUEUE_TARGET);
+    await trSaveQueue(level, queue);
+    trQueues[level] = queue;
+  } finally {
+    trQueueLoading[level] = false;
+  }
+}
+
+async function trInit(level){
+  trLevel = level; trScore = 0; trTotal = 0;
+  trStats = await trLoadStats(level);
+  trQueues[level] = await trLoadQueue(level);
+  showView('view-tr');
+  trLoad();
+  if(trQueues[level].length < TR_QUEUE_TARGET) trTopUpQueue(level);
+}
+
+function trShowWeak(){
+  var topics = trWeakTopicsFor(trStats);
+  var el = document.getElementById('tr-weakspots');
+  el.innerHTML = topics.length ? 'Trickiest topics for you: <span class="chip">' + topics.join('</span><span class="chip">') + '</span>' : 'Prefetched from real news. Your progress is saved to your account.';
+}
+
+async function trLoad(){
+  document.getElementById('tr-next').style.display = 'none';
+  document.getElementById('tr-round').textContent = 'Question ' + (trTotal+1);
+  document.getElementById('tr-score').textContent = 'Score: ' + trScore;
+  trShowWeak();
+
+  var queue = trQueues[trLevel] || [];
+  var q = queue.shift();
+  trQueues[trLevel] = queue;
+  await trSaveQueue(trLevel, queue);
+  if(queue.length < TR_QUEUE_LOW_WATER) trTopUpQueue(trLevel);
+
+  if(q){
+    trRender(q);
+    return;
+  }
+
+  document.getElementById('tr-body').innerHTML = '<div class="loading">Fetching a sentence from today\u2019s news\u2026</div>';
+  var weakTopics = trWeakTopicsFor(trStats);
+  var batch = await trFetchBatch(trLevel, weakTopics, TR_BATCH_SIZE);
+  var fetched = batch.shift();
+  if(batch.length){
+    trQueues[trLevel] = batch.slice(0, TR_QUEUE_TARGET);
+    await trSaveQueue(trLevel, trQueues[trLevel]);
+  }
+  if(fetched){
+    trRender(fetched);
+  } else {
+    document.getElementById('tr-body').innerHTML = '<div class="error-box">Couldn\u2019t fetch a sentence right now.</div>';
+    document.getElementById('tr-next').style.display = 'inline-block';
+    document.getElementById('tr-next').textContent = 'Try again';
+  }
+}
+
+function trRender(q){
+  trTotal++;
+  document.getElementById('tr-round').textContent = 'Question ' + trTotal;
+  var opts = shuffle([q.correct_translation, q.distractor_1, q.distractor_2]);
+  var body = document.getElementById('tr-body');
+  body.innerHTML =
+    '<div class="card"><span class="tag">' + q.source + ' \u00b7 ' + q.topic + '</span>' +
+    '<p class="sentence quote">\u201c' + q.english_sentence + '\u201d</p>' +
+    '<div class="options" id="tr-options"></div>' +
+    '<p class="feedback" id="tr-feedback"></p></div>';
+  var el = document.getElementById('tr-options');
+  var answered = false;
+  opts.forEach(function(opt){
+    var btn = document.createElement('button'); btn.className='opt'; btn.textContent=opt;
+    btn.onclick = async function(){
+      if(answered) return; answered = true;
+      var ok = (opt === q.correct_translation);
+      if(ok) trScore++;
+      if(!trStats.topics[q.topic]) trStats.topics[q.topic] = {correct:0, wrong:0};
+      if(ok) trStats.topics[q.topic].correct++; else trStats.topics[q.topic].wrong++;
+      await logAttempt('tr', ok);
+      await trSave();
+      var kids = el.children;
+      for(var i=0;i<kids.length;i++){
+        var b=kids[i]; b.disabled=true;
+        if(b.textContent===q.correct_translation) b.classList.add('correct'); else if(b===btn) b.classList.add('wrong');
+      }
+      var fb = document.getElementById('tr-feedback');
+      fb.textContent = ok ? 'Correct translation.' : ('Not quite. Correct: ' + q.correct_translation);
+      fb.style.color = ok ? '#0B7A5B' : '#C22C46';
+      document.getElementById('tr-score').textContent = 'Score: ' + trScore;
+      document.getElementById('tr-next').style.display = 'inline-block';
+      document.getElementById('tr-next').textContent = 'Next sentence';
+      trShowWeak();
+    };
+    el.appendChild(btn);
+  });
+  document.getElementById('tr-score').textContent = 'Score: ' + trScore;
+}
+document.getElementById('tr-next').onclick = trLoad;
+document.getElementById('tr-back').onclick = function(){ showView('view-menu'); };
+document.getElementById('tr-end').onclick = async function(){ await trSave(); showView('view-menu'); };
+document.getElementById('tr-reset').onclick = async function(){ trStats = {topics:{}}; await trSave(); trShowWeak(); };
+
+/* ---------- spot-the-transcription (audio) game ---------- */
+var AUDIO_STATS_KEY = 'audio-stats';
+var AUDIO_QUEUE_KEY = 'audio-queue';
+var AUDIO_QUEUE_TARGET = 3;
+var AUDIO_BATCH_SIZE = 3;
+var audioQueue = [];
+var audioQueueLoading = false;
+var audioScore = 0, audioTotal = 0, audioStats = { correct: 0, wrong: 0 };
+
+function speakText(text){
+  if(!('speechSynthesis' in window)) return false;
+  window.speechSynthesis.cancel();
+  var utter = new SpeechSynthesisUtterance(text);
+  utter.rate = 0.95;
+  utter.lang = 'en-US';
+  window.speechSynthesis.speak(utter);
+  return true;
+}
+
+async function audioLoadStats(){
+  try {
+    var res = await window.storage.get(AUDIO_STATS_KEY, false);
+    return res ? JSON.parse(res.value) : { correct: 0, wrong: 0 };
+  } catch(e){ return { correct: 0, wrong: 0 }; }
+}
+async function audioSaveStats(s){ try{ await window.storage.set(AUDIO_STATS_KEY, JSON.stringify(s), false); }catch(e){} }
+
+async function audioInit(){
+  audioScore = 0; audioTotal = 0;
+  audioStats = await audioLoadStats();
+  audioQueue = await audioLoadQueue();
+  showView('view-audio');
+  audioUpdateNote();
+  audioLoad();
+}
+function audioUpdateNote(){
+  var total = (audioStats.correct||0) + (audioStats.wrong||0);
+  var note = document.getElementById('audio-note');
+  note.textContent = total
+    ? ('Lifetime accuracy: ' + Math.round((audioStats.correct/total)*100) + '% (' + total + ' clips)')
+    : 'Real news sentences, read aloud by your browser\u2019s voice.';
+}
+
+async function audioLoadQueue(){
+  try {
+    var res = await window.storage.get(AUDIO_QUEUE_KEY, false);
+    return res ? JSON.parse(res.value) : [];
+  } catch(e){ return []; }
+}
+async function audioSaveQueue(){
+  try { await window.storage.set(AUDIO_QUEUE_KEY, JSON.stringify(audioQueue), false); } catch(e){}
+}
+
+async function audioFetchBatch(count){
+  var batchSize = Math.max(1, Math.min(count || AUDIO_BATCH_SIZE, AUDIO_BATCH_SIZE));
+  var systemPrompt = "You create listening-comprehension exercises for an English learner (B2-C1 level).\n" +
+    "Search the web once for notable news stories published very recently (this week) by BBC, TIME, or The New York Times.\n" +
+    "Create " + batchSize + " different exercises. For each, pick ONE short verbatim sentence under 12 words, clear enough to be read aloud in about 5 seconds. Create two near-identical decoys, each with exactly one word changed.\n" +
+    "Return a JSON array of exactly " + batchSize + " objects with these fields:\n" +
+    "{\"source\": \"BBC News\" | \"TIME\" | \"The New York Times\", \"topic\": one short lowercase word from [politics, economy, technology, environment, health, sport, culture, science, society], \"correct_sentence\": \"the exact short quoted sentence, under 12 words\", \"decoy_1\": \"near-identical sentence with one word changed\", \"decoy_2\": \"near-identical sentence with a different one word changed\"}\n" +
+    "Return ONLY the raw JSON array. No markdown fences, no preamble.";
+  try {
+    var response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "claude-sonnet-5",
+        max_tokens: 550,
+        system: systemPrompt,
+        messages: [{ role: "user", content: "Generate the listening exercise batch now." }],
+        tools: [{ type: "web_search_20250305", name: "web_search" }]
+      })
+    });
+    if(!response.ok) throw new Error('HTTP ' + response.status);
+    var data = await response.json();
+    var textBlocks = (data.content || []).filter(function(b){return b.type==='text';}).map(function(b){return b.text;}).join('\n');
+    var clean = textBlocks.replace(/```json|```/g, '').trim();
+    var m = clean.match(/\[[\s\S]*\]/);
+    var parsed = JSON.parse(m ? m[0] : clean);
+    return Array.isArray(parsed) ? parsed.filter(Boolean).slice(0, batchSize) : [];
+  } catch(err){
+    console.warn('Audio batch fetch failed, using offline pack:', err);
+    return fallbackBatch(AUDIO_FALLBACK, batchSize);
+  }
+}
+
+async function audioTopUpQueue(){
+  if(audioQueueLoading || audioQueue.length >= AUDIO_QUEUE_TARGET) return;
+  audioQueueLoading = true;
+  try {
+    var needed = Math.min(AUDIO_BATCH_SIZE, AUDIO_QUEUE_TARGET - audioQueue.length);
+    var batch = await audioFetchBatch(needed);
+    audioQueue = audioQueue.concat(batch).slice(0, AUDIO_QUEUE_TARGET);
+    await audioSaveQueue();
+  } finally {
+    audioQueueLoading = false;
+  }
+}
+
+async function audioLoad(){
+  document.getElementById('audio-next').style.display = 'none';
+  document.getElementById('audio-round').textContent = 'Question ' + (audioTotal+1);
+  document.getElementById('audio-score').textContent = 'Score: ' + audioScore;
+  var q = audioQueue.shift();
+  await audioSaveQueue();
+  if(audioQueue.length < 1) audioTopUpQueue();
+
+  if(!q){
+    document.getElementById('audio-body').innerHTML = '<div class="loading">Fetching a small batch from today\u2019s news\u2026</div>';
+    var batch = await audioFetchBatch(AUDIO_BATCH_SIZE);
+    q = batch.shift();
+    audioQueue = batch.slice(0, AUDIO_QUEUE_TARGET);
+    await audioSaveQueue();
+  }
+  if(!q){
+    document.getElementById('audio-body').innerHTML = '<div class="error-box">Couldn\u2019t fetch a clip right now.</div>';
+    document.getElementById('audio-next').style.display = 'inline-block';
+    document.getElementById('audio-next').textContent = 'Try again';
+    return;
+  }
+  audioRender(q);
+}
+
+function audioRender(q){
+  audioTotal++;
+  document.getElementById('audio-round').textContent = 'Question ' + audioTotal;
+  var supported = ('speechSynthesis' in window);
+  var body = document.getElementById('audio-body');
+  body.innerHTML =
+    '<div class="card"><span class="tag">' + q.source + ' \u00b7 ' + q.topic + '</span>' +
+    (supported
+      ? '<button class="next" id="audio-play" style="display:inline-block; margin-bottom:1.1rem;">\u25b6 Play clip</button>'
+      : '<p class="error-box">Your browser doesn\u2019t support built-in text-to-speech, so this game can\u2019t play audio here.</p>') +
+    '<div class="options" id="audio-options"></div>' +
+    '<p class="feedback" id="audio-feedback"></p></div>';
+
+  if(supported){
+    document.getElementById('audio-play').onclick = function(){ speakText(q.correct_sentence); };
+    speakText(q.correct_sentence);
+  }
+
+  var opts = shuffle([q.correct_sentence, q.decoy_1, q.decoy_2]);
+  var el = document.getElementById('audio-options');
+  var answered = false;
+  opts.forEach(function(opt){
+    var btn = document.createElement('button'); btn.className='opt'; btn.textContent=opt;
+    btn.onclick = async function(){
+      if(answered) return; answered = true;
+      var ok = (opt === q.correct_sentence);
+      if(ok) audioScore++;
+      if(ok) audioStats.correct = (audioStats.correct||0)+1; else audioStats.wrong = (audioStats.wrong||0)+1;
+      await audioSaveStats(audioStats);
+      await logAttempt('audio', ok);
+      var kids = el.children;
+      for(var i=0;i<kids.length;i++){
+        var b=kids[i]; b.disabled=true;
+        if(b.textContent===q.correct_sentence) b.classList.add('correct'); else if(b===btn) b.classList.add('wrong');
+      }
+      var fb = document.getElementById('audio-feedback');
+      fb.textContent = ok ? 'Correct — that\u2019s exactly what was said.' : ('Not quite. It actually said: "' + q.correct_sentence + '"');
+      fb.style.color = ok ? '#0B7A5B' : '#C22C46';
+      document.getElementById('audio-score').textContent = 'Score: ' + audioScore;
+      document.getElementById('audio-next').style.display = 'inline-block';
+      document.getElementById('audio-next').textContent = 'Next clip';
+      audioUpdateNote();
+    };
+    el.appendChild(btn);
+  });
+  document.getElementById('audio-score').textContent = 'Score: ' + audioScore;
+}
+document.getElementById('audio-next').onclick = audioLoad;
+document.getElementById('audio-back').onclick = function(){ if('speechSynthesis' in window) window.speechSynthesis.cancel(); showView('view-menu'); };
+document.getElementById('audio-end').onclick = async function(){ if('speechSynthesis' in window) window.speechSynthesis.cancel(); await audioSaveStats(audioStats); showView('view-menu'); };
+document.getElementById('audio-reset').onclick = async function(){ audioStats = {correct:0, wrong:0}; await audioSaveStats(audioStats); audioUpdateNote(); };
+
+
+/* ---------- menu wiring ---------- */
+/* ---------- stats view ---------- */
+function accuracyFor(log, sinceMs){
+  var relevant = sinceMs ? log.filter(function(e){ return e.t >= sinceMs; }) : log;
+  var total = relevant.length;
+  var correct = relevant.filter(function(e){ return e.ok; }).length;
+  return { total: total, correct: correct, pct: total ? Math.round((correct/total)*100) : null };
+}
+function renderMetric(label, acc, sub){
+  var val = acc.pct === null ? '—' : acc.pct + '%';
+  return '<div class="metric-card"><div class="metric-label">' + label + '</div><div class="metric-value">' + val + '</div><div class="metric-sub">' + (acc.total ? (acc.correct + '/' + acc.total + ' correct') : sub) + '</div></div>';
+}
+async function statsInit(){
+  showView('view-stats');
+  document.getElementById('stats-body').innerHTML = '<div class="loading">Loading your stats…</div>';
+
+  var logRes, log = [];
+  try { logRes = await window.storage.get(ACTIVITY_LOG_KEY, false); log = logRes ? JSON.parse(logRes.value) : []; } catch(e){}
+
+  var now = new Date();
+  var startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  var startOfWeek = Date.now() - 7*24*60*60*1000;
+
+  var todayAcc = accuracyFor(log, startOfToday);
+  var weekAcc = accuracyFor(log, startOfWeek);
+  var allAcc = accuracyFor(log, null);
+
+  var pvStatsAll = {};
+  try { var r1 = await window.storage.get('pv-stats', false); pvStatsAll = r1 ? JSON.parse(r1.value) : {}; } catch(e){}
+
+  var topicTotals = {};
+  for(var li=0; li<TR_LEVELS.length; li++){
+    var lvl = TR_LEVELS[li];
+    try {
+      var r2 = await window.storage.get('tr-stats-' + lvl, false);
+      var st = r2 ? JSON.parse(r2.value) : { topics:{} };
+      Object.keys(st.topics).forEach(function(t){
+        if(!topicTotals[t]) topicTotals[t] = { correct:0, wrong:0 };
+        topicTotals[t].correct += st.topics[t].correct || 0;
+        topicTotals[t].wrong += st.topics[t].wrong || 0;
+      });
+    } catch(e){}
+  }
+
+  var audioAll = { correct:0, wrong:0 };
+  try { var r3 = await window.storage.get('audio-stats', false); if(r3){ var a = JSON.parse(r3.value); audioAll.correct = a.correct||0; audioAll.wrong = a.wrong||0; } } catch(e){}
+
+  // Fallback for the Overall metric: if the activity log is empty (e.g. rounds
+  // played before we added it), sum up the per-game counters instead so the
+  // user's historical progress isn't hidden.
+  if(allAcc.total === 0){
+    var pvCorrect = 0, pvWrong = 0;
+    Object.keys(pvStatsAll).forEach(function(v){
+      pvCorrect += pvStatsAll[v].correct||0; pvWrong += pvStatsAll[v].wrong||0;
+    });
+    var trCorrect = 0, trWrong = 0;
+    Object.keys(topicTotals).forEach(function(t){
+      trCorrect += topicTotals[t].correct; trWrong += topicTotals[t].wrong;
+    });
+    var lifeC = pvCorrect + trCorrect + audioAll.correct;
+    var lifeW = pvWrong + trWrong + audioAll.wrong;
+    var lifeT = lifeC + lifeW;
+    if(lifeT > 0){
+      allAcc = { total: lifeT, correct: lifeC, pct: Math.round((lifeC/lifeT)*100) };
+    }
+  }
+
+  var challengedVerbs = Object.keys(pvStatsAll)
+    .map(function(v){ return { v:v, wrong: pvStatsAll[v].wrong||0 }; })
+    .filter(function(x){ return x.wrong > 0; })
+    .sort(function(a,b){ return b.wrong - a.wrong; })
+    .slice(0,6);
+
+  var challengedTopics = Object.keys(topicTotals)
+    .map(function(t){ return { t:t, wrong: topicTotals[t].wrong }; })
+    .filter(function(x){ return x.wrong > 0; })
+    .sort(function(a,b){ return b.wrong - a.wrong; })
+    .slice(0,6);
+
+  var html = '<div class="metric-grid">' +
+    renderMetric('Today', todayAcc, 'No attempts yet') +
+    renderMetric('This week', weekAcc, 'No attempts yet') +
+    renderMetric('Overall', allAcc, 'No attempts yet') +
+    '</div>';
+
+  html += '<div class="challenge-section"><div class="challenge-title">Phrasal verbs that challenge you</div>';
+  if(challengedVerbs.length){
+    challengedVerbs.forEach(function(x){
+      var meaning = (PV_DATA[x.v] && PV_DATA[x.v].m) ? PV_DATA[x.v].m : '';
+      html += '<div class="challenge-row"><div><div class="challenge-name">' + x.v + '</div><div class="challenge-meaning">' + meaning.slice(0,70) + (meaning.length>70?'…':'') + '</div></div><span class="challenge-count">' + x.wrong + ' missed</span></div>';
+    });
+  } else {
+    html += '<p class="empty-note">Play a round of either phrasal verb mode and this will start filling in.</p>';
+  }
+  html += '</div>';
+
+  html += '<div class="challenge-section"><div class="challenge-title">Translation topics that challenge you</div>';
+  if(challengedTopics.length){
+    challengedTopics.forEach(function(x){
+      html += '<div class="challenge-row"><div class="challenge-name">' + x.t + '</div><span class="challenge-count">' + x.wrong + ' missed</span></div>';
+    });
+  } else {
+    html += '<p class="empty-note">Play a round of Guess the translation and this will start filling in.</p>';
+  }
+  html += '</div>';
+
+  document.getElementById('stats-body').innerHTML = html;
+}
+document.getElementById('stats-open').onclick = statsInit;
+document.getElementById('stats-back').onclick = function(){ showView('view-menu'); };
+
+/* ---------- menu wiring ---------- */
+document.querySelectorAll('.menu-btn').forEach(function(btn){
+  btn.onclick = function(){
+    var mode = btn.getAttribute('data-mode');
+    if(mode === 'pv100' || mode === 'pv300') pvInit(mode);
+    else if(mode === 'trB2') trInit('B2');
+    else if(mode === 'trC1') trInit('C1');
+    else if(mode === 'trC2') trInit('C2');
+    else if(mode === 'audio') audioInit();
+  };
+});
+</script>
