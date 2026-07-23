@@ -135,7 +135,11 @@
     transition:transform .1s;
   }
   .next:hover{transform:scale(1.03);}
-  #audio-play{background:#C6F462; color:#0A0A0A; border:1.5px solid #0A0A0A;}
+  /* Chip + action button on one row: flex gives a reliable gap and shared
+     vertical centring, which inline-block siblings do not. */
+  .card-head{display:flex; align-items:center; flex-wrap:wrap; gap:14px; margin-bottom:1.1rem;}
+  .card-head .tag{margin-bottom:0;}
+  #audio-play{display:inline-flex; align-items:center; gap:6px; background:#C6F462; color:#0A0A0A; border:1.5px solid #0A0A0A;}
 
   .loading{font-family:'Instrument Sans',sans-serif; font-size:14px; color:#5A5A5A; padding:2.5rem 0; text-align:center;}
   .error-box{font-size:14px; color:#0A0A0A; background:#FFC9B5; border:1.5px solid #0A0A0A; border-radius:18px; padding:1rem;}
@@ -1007,10 +1011,11 @@ function audioRender(q){
   var supported = ('speechSynthesis' in window);
   var body = document.getElementById('audio-body');
   body.innerHTML =
-    '<div class="card"><span class="tag">' + q.source + ' \u00b7 ' + q.topic + '</span>' +
-    (supported
-      ? '<button class="next" id="audio-play" style="display:inline-block; margin-bottom:1.1rem;">\u25b6 Play clip</button>'
-      : '<p class="error-box">Your browser doesn\u2019t support built-in text-to-speech, so this game can\u2019t play audio here.</p>') +
+    '<div class="card">' +
+    '<div class="card-head"><span class="tag">' + q.source + ' \u00b7 ' + q.topic + '</span>' +
+    (supported ? '<button class="next" id="audio-play">\u25b6 Play clip</button>' : '') +
+    '</div>' +
+    (supported ? '' : '<p class="error-box">Your browser doesn\u2019t support built-in text-to-speech, so this game can\u2019t play audio here.</p>') +
     '<div class="options" id="audio-options"></div>' +
     '<p class="feedback" id="audio-feedback"></p></div>';
 
