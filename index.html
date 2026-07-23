@@ -1230,7 +1230,9 @@ async function adminGenerate(){
     });
     var data = await res.json().catch(function(){ return {}; });
     if(!res.ok){ log.textContent = 'Error: ' + (data.error || ('HTTP ' + res.status)); return; }
-    log.textContent = 'Done — added ' + data.inserted + ' new exercises (of ' + data.generated + ' generated; duplicates skipped).';
+    var msg = 'Done — added ' + data.inserted + ' new exercises (of ' + data.generated + ' generated; duplicates skipped).';
+    if(data.errors && data.errors.length) msg += ' Some batches failed: ' + data.errors.join(' | ');
+    log.textContent = msg;
   } catch(e){ log.textContent = 'Request failed: ' + e.message; }
 }
 document.getElementById('admin-open').onclick = function(){ showView('view-admin'); };

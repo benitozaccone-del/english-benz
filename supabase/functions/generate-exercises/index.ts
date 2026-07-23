@@ -39,7 +39,23 @@ async function sha256(s: string): Promise<string> {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-async function claudeJson(system: string, userText: string): Promise<any[]> {
+// Wrap an item schema as {"exercises":[...]} — structured outputs need an object root.
+function envelope(itemProps: Record<string, unknown>, required: string[]) {
+  return {
+    type: 'object',
+    properties: {
+      exercises: {
+        type: 'array',
+        items: { type: 'object', properties: itemProps, required, additionalProperties: false },
+      },
+    },
+    required: ['exercises'],
+    additionalProperties: false,
+  };
+}
+
+// Structured outputs guarantee schema-valid JSON, so no regex scraping / no parse errors.
+async function claudeJson(system: string, userText: string, schema: unknown): Promise<any[]> {
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {
@@ -49,18 +65,36 @@ async function claudeJson(system: string, userText: string): Promise<any[]> {
     },
     body: JSON.stringify({
       model: MODEL,
-      max_tokens: 2500,
+      max_tokens: 8000,
       system,
       messages: [{ role: 'user', content: userText }],
+      output_config: { format: { type: 'json_schema', schema } },
     }),
   });
   if (!res.ok) throw new Error('Anthropic HTTP ' + res.status + ': ' + (await res.text()).slice(0, 300));
   const data = await res.json();
-  const text = (data.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('\n');
-  const clean = text.replace(/```json|```/g, '').trim();
-  const m = clean.match(/\[[\s\S]*\]/);
-  return JSON.parse(m ? m[0] : clean);
+  if (data.stop_reason === 'max_tokens') throw new Error('Response hit max_tokens — try a smaller count.');
+  const text = (data.content || []).filter((b: any) => b.type === 'text').map((b: any) => b.text).join('');
+  const parsed = JSON.parse(text);
+  return Array.isArray(parsed.exercises) ? parsed.exercises : [];
 }
+
+const TR_SCHEMA = envelope({
+  source: { type: 'string' },
+  topic: { type: 'string' },
+  english_sentence: { type: 'string' },
+  correct_translation: { type: 'string' },
+  distractor_1: { type: 'string' },
+  distractor_2: { type: 'string' },
+}, ['source', 'topic', 'english_sentence', 'correct_translation', 'distractor_1', 'distractor_2']);
+
+const AUDIO_SCHEMA = envelope({
+  source: { type: 'string' },
+  topic: { type: 'string' },
+  correct_sentence: { type: 'string' },
+  decoy_1: { type: 'string' },
+  decoy_2: { type: 'string' },
+}, ['source', 'topic', 'correct_sentence', 'decoy_1', 'decoy_2']);
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
@@ -84,6 +118,7 @@ Deno.serve(async (req: Request) => {
     if (!docText.trim()) return json({ error: 'No document text provided.' }, 400);
 
     const rows: any[] = [];
+    const errors: string[] = [];
 
     // Translation exercises, grounded in the document, per CEFR level.
     for (const level of ['B2', 'C1', 'C2']) {
@@ -96,9 +131,9 @@ Deno.serve(async (req: Request) => {
         `"correct_translation": "an accurate, natural Italian translation", ` +
         `"distractor_1": "a plausible but clearly incorrect Italian translation", ` +
         `"distractor_2": "another plausible but clearly incorrect Italian translation"}\n` +
-        `Return ONLY the raw JSON array. No markdown fences, no preamble.`;
+        `Return the exercises in the required structured format.`;
       try {
-        const items = await claudeJson(system, 'DOCUMENT:\n' + docText);
+        const items = await claudeJson(system, 'DOCUMENT:\n' + docText, TR_SCHEMA);
         for (const x of items) {
           if (x && x.english_sentence && x.correct_translation) {
             rows.push({
@@ -107,7 +142,7 @@ Deno.serve(async (req: Request) => {
             });
           }
         }
-      } catch (_) { /* skip this level on failure */ }
+      } catch (e) { errors.push('translation ' + level + ': ' + String((e as Error).message || e)); }
     }
 
     // Listening (audio) exercises.
@@ -120,8 +155,8 @@ Deno.serve(async (req: Request) => {
         `"correct_sentence": "the exact short sentence, under 12 words", ` +
         `"decoy_1": "near-identical sentence with one word changed", ` +
         `"decoy_2": "near-identical sentence with a different one word changed"}\n` +
-        `Return ONLY the raw JSON array. No markdown fences, no preamble.`;
-      const items = await claudeJson(system, 'DOCUMENT:\n' + docText);
+        `Return the exercises in the required structured format.`;
+      const items = await claudeJson(system, 'DOCUMENT:\n' + docText, AUDIO_SCHEMA);
       for (const x of items) {
         if (x && x.correct_sentence && x.decoy_1 && x.decoy_2) {
           rows.push({
@@ -130,7 +165,7 @@ Deno.serve(async (req: Request) => {
           });
         }
       }
-    } catch (_) { /* skip audio on failure */ }
+    } catch (e) { errors.push('audio: ' + String((e as Error).message || e)); }
 
     let inserted = 0;
     if (rows.length) {
@@ -142,7 +177,7 @@ Deno.serve(async (req: Request) => {
       inserted = data ? data.length : 0;
     }
 
-    return json({ inserted, generated: rows.length });
+    return json({ inserted, generated: rows.length, errors });
   } catch (e) {
     return json({ error: String((e as Error).message || e) }, 500);
   }
