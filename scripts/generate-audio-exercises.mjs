@@ -130,11 +130,18 @@ const system =
   `"topic" is one short lowercase word describing the subject.\n` +
   `Return fewer than ${PER_CALL} rather than inventing sentences or bending the word limit.`;
 
-let made = 0, calls = 0, rejected = 0;
+let made = 0, calls = 0, rejected = 0, capped = 0;
 const pending = [];
+const perSource = new Map();
 
-while (made + pending.length < TARGET && calls < Math.ceil(TARGET / 2) + 20) {
-  const doc = usable[Math.floor(Math.random() * usable.length)];
+// Round-robin the sources rather than picking at random. Yield per call varies a
+// lot by author — terse prose clears the 5-15 word filter far more often than
+// long subordinated sentences — so random selection quietly hands most of the
+// batch to one book. The cap is the backstop when even fair turns skew.
+const MAX_PER_SOURCE = Math.max(1, Math.ceil(TARGET / usable.length * (parseFloat(flag('skew', '1.8')) || 1.8)));
+
+while (made + pending.length < TARGET && calls < Math.ceil(TARGET / 2) + 25) {
+  const doc = usable[calls % usable.length];
   calls++;
   let items = [];
   try {
@@ -161,6 +168,9 @@ while (made + pending.length < TARGET && calls < Math.ceil(TARGET / 2) + 20) {
     if (!doc.content.includes(s)) { rejected++; continue; }      // not actually in the source
     const key = s.toLowerCase();
     if (seen.has(key)) { rejected++; continue; }
+    const used = perSource.get(doc.id) || 0;
+    if (used >= MAX_PER_SOURCE) { capped++; continue; }
+    perSource.set(doc.id, used + 1);
     seen.add(key);
     pending.push({
       type: 'audio',
@@ -195,4 +205,6 @@ if (DRY_RUN) {
 made += await flush();
 const { count } = await db.from('exercises').select('*', { count: 'exact', head: true }).eq('type', 'audio').eq('level', LEVEL);
 console.log(`\nDone. ${made} new ${LEVEL} listening exercises (${rejected} rejected as too long, too short, or not verbatim).`);
+if (capped) console.log(`${capped} more were dropped to keep any one source under ${MAX_PER_SOURCE} of the batch.`);
+if (made < TARGET) console.log(`Short of the ${TARGET} asked for — the shelf did not yield enough at this level.`);
 console.log(`The repository now holds ${count} at ${LEVEL}.`);

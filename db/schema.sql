@@ -250,8 +250,15 @@ create policy kv_own on public.kv
 -- RPCs the app calls
 -- ---------------------------------------------------------------------------
 
--- Pick the exercises this user has seen least (random tiebreak) for a type/level.
+-- Pick what this user should see next for a type/level.
 -- Pass p_level = '' to ignore level (audio).
+--
+-- Ordering is least-seen-first, but each wrong answer counts as two views
+-- REMOVED. Plain least-seen-first has a perverse effect for learning: answering
+-- an exercise pushes it to the back of the queue whether you got it right or
+-- wrong, so the ones you fail are exactly the ones you wait longest to meet
+-- again. Subtracting for failures pulls them forward without pinning them to
+-- the front — get it right and it drifts back naturally.
 create or replace function public.next_exercises(
   p_type  text,
   p_level text default '',
@@ -268,7 +275,33 @@ as $$
   where e.type = p_type
     and (p_level = '' or e.level = p_level)
     and e.active
-  order by coalesce(p.times_seen, 0) asc, random()
+  order by (coalesce(p.times_seen, 0) - 2 * coalesce(p.wrong_count, 0)) asc, random()
+  limit greatest(1, least(p_limit, 50));
+$$;
+
+-- Exercises this user has actually got wrong, worst first. Powers the "try
+-- again" list in Statistics, so a failure can be revisited on demand rather
+-- than waiting for it to come round.
+create or replace function public.challenging_exercises(
+  p_type  text default '',
+  p_limit integer default 12
+)
+returns table (
+  id uuid, type text, level text, topic text, source text, payload jsonb,
+  times_seen integer, wrong_count integer, correct_count integer, last_seen timestamptz
+)
+language sql
+stable
+as $$
+  select e.id, e.type, e.level, e.topic, e.source, e.payload,
+         p.times_seen, p.wrong_count, p.correct_count, p.last_seen
+  from public.presentations p
+  join public.exercises e on e.id = p.exercise_id
+  where p.user_id = auth.uid()
+    and p.wrong_count > 0
+    and e.active
+    and (p_type = '' or e.type = p_type)
+  order by p.wrong_count desc, p.last_seen desc nulls last
   limit greatest(1, least(p_limit, 50));
 $$;
 
@@ -334,3 +367,4 @@ $$;
 grant execute on function public.next_exercises(text, text, integer)          to authenticated;
 grant execute on function public.record_presentation(uuid, boolean)           to authenticated;
 grant execute on function public.next_phrasal_verbs(text, text, integer)      to authenticated;
+grant execute on function public.challenging_exercises(text, integer)         to authenticated;

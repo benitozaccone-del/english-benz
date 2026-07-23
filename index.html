@@ -38,14 +38,36 @@
   }
   .menu-btn:hover{transform:translateY(-2px);}
   .menu-btn:active{transform:translateY(0);}
-  .menu-btn[data-mode="pv100"]{background:#C6F462;}
-  .menu-btn[data-mode="pv300"]{background:#E5D6FF;}
-  .menu-btn[data-mode="trB2"]{background:#FFE8A3;}
-  .menu-btn[data-mode="trC1"]{background:#B8E4FF;}
-  .menu-btn[data-mode="trC2"]{background:#FFC9B5;}
-  .menu-btn[data-mode^="audio"]{background:#0A0A0A; color:#FAFAF7;}
-  .menu-btn[data-mode^="audio"] .sub{color:#B8B8B8;}
-  .menu-btn[data-mode^="audio"] .icon-circle{background:#C6F462; color:#0A0A0A;}
+  /* Two levels: a coloured card per subject, neutral cards for its variants.
+     Colour marks the family; the indent and the rule mark the nesting. */
+  .menu-group{display:flex; flex-direction:column; gap:8px;}
+  .group-btn[data-group-btn="pv"]{background:linear-gradient(105deg,#C6F462 0%,#A8E85C 100%);}
+  .group-btn[data-group-btn="tr"]{background:linear-gradient(105deg,#C9B3FF 0%,#FFB9D8 100%);}
+  .group-btn[data-group-btn="listen"]{background:linear-gradient(105deg,#0A0A0A 0%,#26314A 100%); color:#FAFAF7;}
+  .group-btn[data-group-btn="listen"] .sub{color:#C3C7D2;}
+  .group-btn[data-group-btn="listen"] .icon-circle{background:#C6F462; color:#0A0A0A;}
+  .group-btn .chev svg{transition:transform .18s ease;}
+  .menu-group.open .group-btn .chev svg{transform:rotate(180deg);}
+
+  /* Variants inherit a wash of the family colour, so a child is legible as a
+     child of THAT parent even once the parent card has scrolled away. */
+  .menu-sub{display:none; flex-direction:column; gap:8px;
+    margin:2px 0 6px 20px; padding-left:16px; border-left:2px solid #DCDCD2;}
+  .menu-group.open .menu-sub{display:flex;}
+  .variant-btn{background:#FFFFFF; border:1.5px solid #0A0A0A; padding:0.95rem 1.15rem;}
+  .variant-btn .title{font-size:16.5px;}
+  .variant-btn .icon-circle{width:38px; height:38px; background:#F4F4EF; color:#0A0A0A;}
+  .variant-btn .icon-circle svg{width:20px; height:20px;}
+
+  .menu-group[data-group="pv"] .menu-sub{border-left-color:#A8E85C;}
+  .menu-group[data-group="pv"] .variant-btn{background:#F3FCE2; border-color:#7CA83A;}
+  .menu-group[data-group="pv"] .variant-btn .icon-circle{background:#C6F462;}
+  .menu-group[data-group="tr"] .menu-sub{border-left-color:#C9B3FF;}
+  .menu-group[data-group="tr"] .variant-btn{background:#F7F1FF; border-color:#8F6FD0;}
+  .menu-group[data-group="tr"] .variant-btn .icon-circle{background:#D9C6FF;}
+  .menu-group[data-group="listen"] .menu-sub{border-left-color:#26314A;}
+  .menu-group[data-group="listen"] .variant-btn{background:#F1F3F8; border-color:#26314A;}
+  .menu-group[data-group="listen"] .variant-btn .icon-circle{background:#C6F462;}
   .menu-btn .title{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif; font-weight:600; font-size:19px; line-height:1.15; letter-spacing:-0.02em;}
   .menu-btn .title em{font-style:italic; font-weight:500;}
   .menu-btn .sub{font-size:13px; color:#4A4A4A; margin-top:3px; line-height:1.35;}
@@ -80,6 +102,10 @@
   .challenge-meaning{font-size:12px; color:#5A5A5A; margin-top:2px;}
   .challenge-count{font-family:'Instrument Sans',sans-serif; font-size:11px; font-weight:600; background:#FFC9B5; color:#0A0A0A; padding:4px 10px; border-radius:999px; border:1.5px solid #0A0A0A;}
   .empty-note{font-size:14px; color:#5A5A5A;}
+  .retry-btn{flex:none; margin-left:12px; font-family:'Instrument Sans',sans-serif; font-weight:600;
+    font-size:12.5px; background:#C6F462; color:#0A0A0A; border:1.5px solid #0A0A0A;
+    border-radius:999px; padding:0.5rem 0.9rem; cursor:pointer;}
+  .retry-btn:hover{transform:translateY(-1px);}
 
   .back-btn{
     display:inline-flex; align-items:center; gap:6px;
@@ -89,16 +115,39 @@
   }
   .back-btn:hover{background:#0A0A0A; color:#FAFAF7;}
 
+  /* Each game inherits its family's palette, so the colour you tapped in the
+     menu is the colour you keep playing in. Defaults keep any unthemed view
+     looking exactly as before. */
+  #view-pv{--accent:#C6F462; --accent-2:#A8E85C; --soft:#F3FCE2; --line:#7CA83A;}
+  #view-tr{--accent:#C9B3FF; --accent-2:#FFB9D8; --soft:#F7F1FF; --line:#8F6FD0;}
+  #view-audio{--accent:#C6F462; --accent-2:#26314A; --soft:#F1F3F8; --line:#26314A;}
+
   .top{display:flex; justify-content:space-between; align-items:center; margin-bottom:0.7rem;}
-  .round{font-family:'Instrument Sans',sans-serif; font-size:12px; font-weight:600; letter-spacing:0.03em; color:#0A0A0A; text-transform:uppercase; background:#FFFFFF; padding:5px 12px; border-radius:999px; border:1.5px solid #0A0A0A;}
+  .round{font-family:'Instrument Sans',sans-serif; font-size:12px; font-weight:600; letter-spacing:0.03em; color:#0A0A0A; text-transform:uppercase; background:var(--soft,#FFFFFF); padding:5px 12px; border-radius:999px; border:1.5px solid var(--line,#0A0A0A);}
   .score{font-family:'Instrument Sans',sans-serif; font-size:12px; font-weight:700; background:#0A0A0A; color:#C6F462; padding:6px 14px; border-radius:999px;}
+
+  /* One mark per answered question this session: filled for right, warm for
+     wrong, and a ringed one for the question on screen. Reading your own run at
+     a glance is worth more than another number. */
+  .dots{display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin:0 0 0.8rem; min-height:14px;}
+  .dots i{display:block; width:11px; height:11px; border-radius:50%; border:1.5px solid #0A0A0A; background:#FFFFFF;}
+  /* Filled with the saturated family colour, not the pale one: at 11px a tint
+     against the warm "wrong" fill is not a distinction you can read in passing. */
+  .dots i.ok{background:var(--line,#7CA83A);}
+  .dots i.no{background:#FF9A76;}
+  .dots i.now{background:#FFFFFF; border-style:dashed; box-shadow:0 0 0 3px var(--soft,#EFEFE9);}
 
   .weak{font-size:13px; color:#5A5A5A; margin:0 0 1rem; min-height:16px;}
   .weak .chip{display:inline-block; background:#FFFFFF; color:#0A0A0A; padding:3px 10px; border-radius:999px; font-weight:600; margin:0 3px 3px 0; border:1.5px solid #0A0A0A;}
 
-  .card{background:#FFFFFF; border:1.5px solid #0A0A0A; border-radius:24px; padding:1.75rem;}
+  /* A ribbon of the family gradient along the top edge of the card. overflow
+     clips it to the corner radius, so it needs no radius of its own. */
+  .card{background:#FFFFFF; border:1.5px solid #0A0A0A; border-radius:24px; padding:1.75rem;
+    position:relative; overflow:hidden;}
+  .card::before{content:''; position:absolute; top:0; left:0; right:0; height:5px;
+    background:linear-gradient(90deg, var(--accent,#C6F462), var(--accent-2,#A8E85C));}
 
-  .tag{display:inline-block; font-size:11px; padding:4px 12px; border-radius:999px; background:#C6F462; color:#0A0A0A; margin-bottom:14px; font-family:'Instrument Sans',sans-serif; font-weight:600; border:1.5px solid #0A0A0A;}
+  .tag{display:inline-block; font-size:11px; padding:4px 12px; border-radius:999px; background:var(--accent,#C6F462); color:#0A0A0A; margin-bottom:14px; font-family:'Instrument Sans',sans-serif; font-weight:600; border:1.5px solid #0A0A0A;}
 
   .sentence{font-family:'Bricolage Grotesque',sans-serif; font-weight:500; font-size:22px; line-height:1.4; margin:0 0 1.4rem; letter-spacing:-0.02em;}
   .sentence.quote{font-style:italic; font-weight:500;}
@@ -127,6 +176,13 @@
   input.dw.correct{background:#C6F462; font-weight:600;}
   input.dw.wrong{background:#FFC9B5; font-weight:600;}
   input.dw:disabled{opacity:1;}   /* Safari fades disabled inputs; the answer must stay readable */
+  input.dw.revealed{background:#E5D6FF; font-weight:600;}   /* given away, so neither right nor wrong */
+  .dict-actions{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+  .hint-btn{font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:13px;
+    background:none; color:#5A5A5A; border:1.5px solid #C8C8BE; border-radius:999px;
+    padding:0.7rem 1.1rem; cursor:pointer;}
+  .hint-btn:hover:not(:disabled){color:#0A0A0A; border-color:#0A0A0A;}
+  .hint-btn:disabled{opacity:.4; cursor:default;}
   .voice-note{font-family:'Instrument Sans',sans-serif; font-size:11px; color:#5A5A5A; margin-left:auto;}
   .feedback{font-size:14px; font-weight:600; margin:1rem 0 0; min-height:20px;}
   .bonus{margin-top:1rem; padding:0.9rem 1.1rem; background:#E5D6FF; border-radius:18px; border:1.5px solid #0A0A0A; font-family:'Bricolage Grotesque',sans-serif; font-size:14px; color:#0A0A0A; font-style:italic;}
@@ -201,67 +257,102 @@
 <div id="view-menu" style="display:none;">
   <div class="eyebrow">English Benz · B2 → C2</div>
   <h1 class="h1">Practice <em>English</em>, one round at a time.</h1>
-  <p class="lede">Four games. Real book sentences and today's news. Your progress follows you across devices.</p>
+  <p class="lede">Three subjects, eight rounds. Real novels, a course book and today's news. Your progress follows you across devices.</p>
   <div class="menu-grid">
-    <button class="menu-btn" data-mode="pv100">
-      <div>
-        <div class="title">Phrasal verbs · Top 100</div>
-        <div class="sub">Real sentences from a phrasal-verb course book</div>
+    <div class="menu-group" data-group="pv">
+      <button class="menu-btn group-btn" data-group-btn="pv" aria-expanded="false">
+        <div>
+          <div class="title">Phrasal verbs</div>
+          <div class="sub">Complete a sentence with the verb that fits</div>
+        </div>
+        <span class="icon-circle chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="menu-sub">
+        <button class="menu-btn variant-btn" data-mode="pv100">
+          <div>
+            <div class="title">Core 100</div>
+            <div class="sub">The hundred that come up most, from a course book</div>
+          </div>
+          <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4z"/><path d="M4 4v13a3 3 0 0 0 3 3"/><path d="M8 8h8M8 12h6"/></svg></span>
+        </button>
+        <button class="menu-btn variant-btn" data-mode="pv300">
+          <div>
+            <div class="title">Wider 200</div>
+            <div class="sub">The core hundred plus a hundred less common ones</div>
+          </div>
+          <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 4v16M16 4v16"/></svg></span>
+        </button>
+        <button class="menu-btn variant-btn" data-mode="pvnews">
+          <div>
+            <div class="title">From the news</div>
+            <div class="sub">Verbs caught in recent articles, in their real sentences</div>
+          </div>
+          <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h13a2 2 0 0 1 2 2v11a2 2 0 0 0 2-2V8"/><path d="M4 5v13a2 2 0 0 0 2 2h13"/><path d="M8 9h6M8 13h6"/></svg></span>
+        </button>
       </div>
-      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h13a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3V4z"/><path d="M4 4v13a3 3 0 0 0 3 3"/><path d="M8 8h8M8 12h6"/></svg></span>
-    </button>
-    <button class="menu-btn" data-mode="pv300">
-      <div>
-        <div class="title">Phrasal verbs · Top 200</div>
-        <div class="sub">A wider pool, same real-sentence source</div>
+    </div>
+
+    <div class="menu-group" data-group="tr">
+      <button class="menu-btn group-btn" data-group-btn="tr" aria-expanded="false">
+        <div>
+          <div class="title">Translation</div>
+          <div class="sub">Read the English, choose the Italian that matches</div>
+        </div>
+        <span class="icon-circle chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="menu-sub">
+        <button class="menu-btn variant-btn" data-mode="trB2">
+          <div>
+            <div class="title">B2</div>
+            <div class="sub">Everyday complexity, common but varied vocabulary</div>
+          </div>
+          <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h12M9 3v2M6 14l5-9 5 9M4 14h8"/><path d="M12 18h9M15 13l4 8 4-8M17 21h4" transform="translate(-2 -2)"/></svg></span>
+        </button>
+        <button class="menu-btn variant-btn" data-mode="trC1">
+          <div>
+            <div class="title">C1</div>
+            <div class="sub">More idiomatic, less frequent vocabulary</div>
+          </div>
+          <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg></span>
+        </button>
+        <button class="menu-btn variant-btn" data-mode="trC2">
+          <div>
+            <div class="title">C2</div>
+            <div class="sub">Near-native complexity and nuance</div>
+          </div>
+          <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg></span>
+        </button>
       </div>
-      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M8 4v16M16 4v16"/></svg></span>
-    </button>
-    <button class="menu-btn" data-mode="pvnews">
-      <div>
-        <div class="title">Phrasal verbs · <em>from the news</em></div>
-        <div class="sub">Verbs and usage mined from recent articles</div>
+    </div>
+
+    <div class="menu-group" data-group="listen">
+      <button class="menu-btn group-btn" data-group-btn="listen" aria-expanded="false">
+        <div>
+          <div class="title">Listening</div>
+          <div class="sub">Hear a sentence read aloud, then show you caught it</div>
+        </div>
+        <span class="icon-circle chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+      </button>
+      <div class="menu-sub">
+        <button class="menu-btn variant-btn" data-mode="audioBasic">
+          <div>
+            <div class="title">Pick what you heard</div>
+            <div class="sub">Three near-identical sentences — choose the one that was said</div>
+          </div>
+          <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 7v10M4 10v4M16 5v14M20 8v8"/></svg></span>
+        </button>
+        <button class="menu-btn variant-btn" data-mode="audioAdvanced">
+          <div>
+            <div class="title">Type what you heard</div>
+            <div class="sub">Dictation — a few words are given, you write the rest</div>
+          </div>
+          <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11M8 7v7M4 10v4M16 5v9M20 8v6"/><path d="M4 20h16"/><path d="M9 17.5h6"/></svg></span>
+        </button>
       </div>
-      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h13a2 2 0 0 1 2 2v11a2 2 0 0 0 2-2V8"/><path d="M4 5v13a2 2 0 0 0 2 2h13"/><path d="M8 9h6M8 13h6"/></svg></span>
-    </button>
-    <button class="menu-btn" data-mode="trB2">
-      <div>
-        <div class="title">Guess the translation · B2</div>
-        <div class="sub">Real news sentences, everyday complexity</div>
-      </div>
-      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h12M9 3v2M6 14l5-9 5 9M4 14h8"/><path d="M12 18h9M15 13l4 8 4-8M17 21h4" transform="translate(-2 -2)"/></svg></span>
-    </button>
-    <button class="menu-btn" data-mode="trC1">
-      <div>
-        <div class="title">Guess the translation · C1</div>
-        <div class="sub">More idiomatic, less frequent vocabulary</div>
-      </div>
-      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/></svg></span>
-    </button>
-    <button class="menu-btn" data-mode="trC2">
-      <div>
-        <div class="title">Guess the translation · C2</div>
-        <div class="sub">Near-native complexity and nuance</div>
-      </div>
-      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg></span>
-    </button>
-    <button class="menu-btn" data-mode="audioBasic">
-      <div>
-        <div class="title">Spot the <em>transcription</em> · basic</div>
-        <div class="sub">Listen, then pick which of three was said</div>
-      </div>
-      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 7v10M4 10v4M16 5v14M20 8v8"/></svg></span>
-    </button>
-    <button class="menu-btn" data-mode="audioAdvanced">
-      <div>
-        <div class="title">Spot the <em>transcription</em> · advanced</div>
-        <div class="sub">Type what you hear — only a few words are given</div>
-      </div>
-      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11M8 7v7M4 10v4M16 5v9M20 8v6"/><path d="M4 20h16"/><path d="M9 17.5h6"/></svg></span>
-    </button>
+    </div>
   </div>
   <button class="stats-link" id="stats-open">See my stats <span>→</span></button>
-  <button class="signout-link" id="admin-open" style="display:none;">⚙ Admin · generate from a document</button>
+  <button class="signout-link" id="admin-open" style="display:none;">⚙ Admin</button>
   <button class="signout-link" id="sign-out" style="display:none;">Sign out</button>
 </div>
 
@@ -313,6 +404,7 @@
 <div id="view-pv" style="display:none;">
   <button class="back-btn" id="pv-back">← Menu</button>
   <div class="top"><span class="round" id="pv-round">Question 1</span><span class="score" id="pv-score">Score: 0</span></div>
+  <div class="dots" id="pv-dots"></div>
   <p class="weak" id="pv-weakspots"></p>
   <div class="card">
     <div class="card-head"><span class="tag" id="pv-tag"></span></div>
@@ -327,6 +419,7 @@
 <div id="view-tr" style="display:none;">
   <button class="back-btn" id="tr-back">← Menu</button>
   <div class="top"><span class="round" id="tr-round">Question 1</span><span class="score" id="tr-score">Score: 0</span></div>
+  <div class="dots" id="tr-dots"></div>
   <p class="weak" id="tr-weakspots"></p>
   <div id="tr-body"><div class="loading" id="tr-loading">Fetching a sentence from today's news…</div></div>
   <div class="actions"><button class="reset" id="tr-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="tr-end">End session</button><button class="next" id="tr-next">Next sentence</button></div></div>
@@ -342,6 +435,7 @@
 <div id="view-audio" style="display:none;">
   <button class="back-btn" id="audio-back">← Menu</button>
   <div class="top"><span class="round" id="audio-round">Question 1</span><span class="score" id="audio-score">Score: 0</span></div>
+  <div class="dots" id="audio-dots"></div>
   <p class="weak" id="audio-note"></p>
   <div id="audio-body"><div class="loading">Fetching a sentence from today's news…</div></div>
   <div class="actions"><button class="reset" id="audio-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="audio-end">End session</button><button class="next" id="audio-next">Next clip</button></div></div>
@@ -418,6 +512,36 @@ async function ebFetchExercises(type, level, n){
    The bucket is private: some clips read sentences from copyrighted books, which
    must not sit on an open URL. Signed links are minted per session and expire,
    so a URL that leaks stops working. One batched call signs the whole queue. */
+/* Exercises this user actually got wrong, worst first. next_exercises already
+   pulls failures forward on its own, but "come back to this one now" is a
+   different need from "show it sooner", so Statistics offers it directly. */
+async function ebFetchChallenging(type, limit){
+  if(!ebCloud()) return [];
+  try {
+    var r = await ebSB.rpc('challenging_exercises', { p_type: type || '', p_limit: limit || 12 });
+    if(r.error || !Array.isArray(r.data)) return [];
+    return r.data;
+  } catch(e){ return []; }
+}
+
+/* Put a specific exercise at the head of its game's queue and open that game. */
+async function ebRetryExercise(row){
+  var q = Object.assign({}, row.payload);
+  q._id = row.id;
+  if(row.type === 'translation'){
+    var lvl = row.level || 'B2';
+    var queue = await trLoadQueue(lvl);
+    await trSaveQueue(lvl, [q].concat(queue).slice(0, TR_QUEUE_TARGET));
+    trInit(lvl);
+  } else if(row.type === 'audio'){
+    await ebAttachClips([q]);
+    var aq = await audioLoadQueue();
+    audioQueue = [q].concat(aq).slice(0, AUDIO_QUEUE_TARGET);
+    await audioSaveQueue();
+    audioInit(audioLevel);
+  }
+}
+
 var EB_CLIP_TTL = 7200;   // seconds; comfortably longer than a sitting
 async function ebAttachClips(qs){
   try {
@@ -552,6 +676,14 @@ function renderBlank(s){
     return '<span class="blank">' + '_'.repeat(n) + '</span>';
   });
 }
+/* Session run: one mark per answered question, plus a ringed one for the
+   question currently on screen. Reset whenever a game starts. */
+function renderDots(id, results, showCurrent){
+  var el = document.getElementById(id);
+  if(!el) return;
+  el.innerHTML = results.map(function(ok){ return '<i class="' + (ok ? 'ok' : 'no') + '"></i>'; }).join('')
+    + (showCurrent === false ? '' : '<i class="now"></i>');
+}
 function showView(id){
   ['view-auth','view-menu','view-admin','view-pv','view-tr','view-stats','view-audio'].forEach(function(v){ document.getElementById(v).style.display = (v===id) ? 'block' : 'none'; });
 }
@@ -607,11 +739,12 @@ var PV_MODES = {
   pvnews: { category: 'news',   label: 'verbs found in the news' }
 };
 var pvPool = PV_FALLBACK, pvScore = 0, pvTotal = 0, pvAnswered = false, pvStats = {}, pvPoolNote = '';
+var pvResults = [];   // this session's run, oldest first
 var PV_STATS_KEY = 'pv-stats';
 
 async function pvInit(mode){
   var cfg = PV_MODES[mode] || PV_MODES.pv100;
-  pvScore = 0; pvTotal = 0;
+  pvScore = 0; pvTotal = 0; pvResults = [];
   try {
     var res = await window.storage.get(PV_STATS_KEY, false);
     pvStats = res ? JSON.parse(res.value) : {};
@@ -677,6 +810,7 @@ function pvLoad(){
   document.getElementById('pv-feedback').textContent = '';
   document.getElementById('pv-bonus').style.display = 'none';
   document.getElementById('pv-next').style.display = 'none';
+  renderDots('pv-dots', pvResults);
   pvShowWeak();
 
   var capitalize = /^[A-Z]/.test(q.a);
@@ -696,6 +830,7 @@ async function pvAnswer(opt, btn){
   if(pvAnswered) return; pvAnswered=true; pvTotal++;
   var verb = pvCurrent.verb, meaning = pvCurrent.meaning, correctText = pvCurrent.q.a;
   var ok = (opt===correctText); if(ok) pvScore++;
+  pvResults.push(ok); renderDots('pv-dots', pvResults, false);
   var st = pvStatFor(verb); if(ok) st.correct++; else st.wrong++;
   await logAttempt('pv', ok);
   await pvSave();
@@ -734,6 +869,7 @@ var TR_QUEUE_LOW_WATER = 1;
 var TR_BATCH_SIZE = 3;
 var trStats = { topics:{} };
 var trScore = 0, trTotal = 0, trLevel = 'B2';
+var trResults = [];   // this session's run, oldest first
 var trQueues = { B2: [], C1: [], C2: [] };
 var trQueueLoading = { B2: false, C1: false, C2: false };
 var LEVEL_DESC = {
@@ -791,7 +927,7 @@ async function trTopUpQueue(level){
 }
 
 async function trInit(level){
-  trLevel = level; trScore = 0; trTotal = 0;
+  trLevel = level; trScore = 0; trTotal = 0; trResults = [];
   trStats = await trLoadStats(level);
   trQueues[level] = await trLoadQueue(level);
   showView('view-tr');
@@ -842,6 +978,7 @@ async function trLoad(){
 function trRender(q){
   trTotal++;
   document.getElementById('tr-round').textContent = 'Question ' + trTotal;
+  renderDots('tr-dots', trResults);
   var opts = shuffle([q.correct_translation, q.distractor_1, q.distractor_2]);
   var body = document.getElementById('tr-body');
   body.innerHTML =
@@ -857,6 +994,7 @@ function trRender(q){
       if(answered) return; answered = true;
       var ok = (opt === q.correct_translation);
       if(ok) trScore++;
+      trResults.push(ok); renderDots('tr-dots', trResults, false);
       if(!trStats.topics[q.topic]) trStats.topics[q.topic] = {correct:0, wrong:0};
       if(ok) trStats.topics[q.topic].correct++; else trStats.topics[q.topic].wrong++;
       await logAttempt('tr', ok);
@@ -897,6 +1035,7 @@ var audioScore = 0, audioTotal = 0, audioStats = { correct: 0, wrong: 0 };
    because they are not comparable; 'basic' keeps the original key so the
    accuracy recorded before this split still counts. */
 var audioLevel = 'basic';
+var audioResults = [];   // this session's run, oldest first
 var AUDIO_PREFILL = 0.15;                 // share of words shown as anchors in advanced
 function audioStatsKey(){ return audioLevel === 'advanced' ? AUDIO_STATS_KEY + '-advanced' : AUDIO_STATS_KEY; }
 
@@ -945,7 +1084,7 @@ async function audioSaveStats(s){ try{ await window.storage.set(audioStatsKey(),
 
 async function audioInit(level){
   audioLevel = (level === 'advanced') ? 'advanced' : 'basic';
-  audioScore = 0; audioTotal = 0;
+  audioScore = 0; audioTotal = 0; audioResults = [];
   audioStats = await audioLoadStats();
   audioQueue = await audioLoadQueue();
   showView('view-audio');
@@ -1025,6 +1164,7 @@ async function audioLoad(){
 /* Shared scoring tail for both levels. */
 async function audioScoreAnswer(q, ok){
   if(ok) audioScore++;
+  audioResults.push(ok); renderDots('audio-dots', audioResults, false);
   if(ok) audioStats.correct = (audioStats.correct||0)+1; else audioStats.wrong = (audioStats.wrong||0)+1;
   await audioSaveStats(audioStats);
   await logAttempt('audio', ok);
@@ -1038,6 +1178,7 @@ async function audioScoreAnswer(q, ok){
 function audioRender(q){
   audioTotal++;
   document.getElementById('audio-round').textContent = 'Question ' + audioTotal;
+  renderDots('audio-dots', audioResults);
   var playable = audioCanPlay(q);
   var body = document.getElementById('audio-body');
 
@@ -1049,7 +1190,11 @@ function audioRender(q){
     '</div>' +
     (playable ? '' : '<p class="error-box">No clip for this sentence yet, and this browser has no built-in speech \u2014 so it can\u2019t be played here.</p>') +
     (audioLevel === 'advanced'
-      ? '<div id="audio-dictation"></div><button class="next" id="audio-check" style="display:inline-flex;">Check answer</button>'
+      ? '<div id="audio-dictation"></div>' +
+        '<div class="dict-actions">' +
+          '<button class="next" id="audio-check" style="display:inline-flex;">Check answer</button>' +
+          '<button class="hint-btn" id="audio-reveal">Reveal a word</button>' +
+        '</div>'
       : '<div class="options" id="audio-options"></div>') +
     '<p class="feedback" id="audio-feedback"></p></div>';
 
@@ -1138,27 +1283,49 @@ function audioRenderDictation(q){
     host.appendChild(document.createTextNode(' '));
   });
 
+  /* Reveal fills in one blank at random and takes it out of the graded set, so a
+     sentence you have half-caught stays winnable. Revealed words are neither
+     right nor wrong \u2014 they are simply no longer being asked. */
+  var revealed = 0;
+  var revealBtn = document.getElementById('audio-reveal');
+  function audioRevealWord(){
+    var open = inputs.filter(function(i){ return !i.disabled; });
+    if(open.length <= 1){ revealBtn.disabled = true; return; }   // never leave nothing to answer
+    var pick = open[Math.floor(Math.random() * open.length)];
+    pick.value = pick.getAttribute('data-expect');
+    pick.classList.add('revealed');
+    pick.disabled = true;
+    revealed++;
+    if(open.length - 1 <= 1) revealBtn.disabled = true;
+    revealBtn.textContent = 'Reveal a word (' + revealed + ' used)';
+  }
+
   var checked = false;
   async function audioCheckDictation(){
     if(checked) return; checked = true;
+    var graded = inputs.filter(function(i){ return !i.classList.contains('revealed'); });
     var right = 0;
-    inputs.forEach(function(inp){
+    graded.forEach(function(inp){
       var expect = inp.getAttribute('data-expect');
       var ok = audioNorm(inp.value) === audioNorm(expect);
       inp.classList.add(ok ? 'correct' : 'wrong');
       inp.disabled = true;
       if(ok) right++; else inp.value = expect;   // show what it should have been
     });
-    var all = (right === inputs.length);
+    var all = (right === graded.length);
     var fb = document.getElementById('audio-feedback');
+    var hint = revealed ? ' (' + revealed + ' revealed)' : '';
     fb.textContent = all
-      ? 'Every word right \u2014 that is exactly what was said.'
-      : (right + ' of ' + inputs.length + ' right. It said: "' + q.correct_sentence + '"');
+      ? ('Every word right' + hint + ' \u2014 that is exactly what was said.')
+      : (right + ' of ' + graded.length + ' right' + hint + '. It said: "' + q.correct_sentence + '"');
     fb.style.color = all ? '#0B7A5B' : '#C22C46';
     document.getElementById('audio-check').style.display = 'none';
+    revealBtn.style.display = 'none';
     await audioScoreAnswer(q, all);
   }
 
+  revealBtn.onclick = audioRevealWord;
+  if(inputs.length <= 1) revealBtn.disabled = true;
   document.getElementById('audio-check').onclick = audioCheckDictation;
   host.addEventListener('keydown', function(e){
     if(e.key === 'Enter'){ e.preventDefault(); audioCheckDictation(); }
@@ -1276,17 +1443,58 @@ async function statsInit(){
       html += '<div class="challenge-row"><div class="challenge-name">' + x.t + '</div><span class="challenge-count">' + x.wrong + ' missed</span></div>';
     });
   } else {
-    html += '<p class="empty-note">Play a round of Guess the translation and this will start filling in.</p>';
+    html += '<p class="empty-note">Play a round of Translation and this will start filling in.</p>';
+  }
+  html += '</div>';
+
+  // Individual exercises you actually got wrong, each replayable on the spot.
+  var missed = await ebFetchChallenging('', 12);
+  html += '<div class="challenge-section"><div class="challenge-title">Exercises you missed</div>';
+  if(missed.length){
+    html += '<p class="empty-note" style="margin:0 0 10px;">Answer one again and it stops appearing here once you get it right more often than wrong.</p>';
+    missed.forEach(function(row, i){
+      var p = row.payload || {};
+      var text = p.english_sentence || p.correct_sentence || '';
+      var what = row.type === 'translation' ? ('Translation · ' + (row.level || '')) : 'Listening';
+      html += '<div class="challenge-row">' +
+        '<div style="min-width:0;"><div class="challenge-name">' + ebEsc(text.slice(0,58)) + (text.length>58?'…':'') + '</div>' +
+        '<div class="challenge-meaning">' + what + ' · ' + ebEsc(row.source || '') + ' · ' + row.wrong_count + ' wrong of ' + row.times_seen + '</div></div>' +
+        '<button class="retry-btn" data-retry="' + i + '">Try again</button></div>';
+    });
+  } else {
+    html += '<p class="empty-note">Nothing missed yet — or you have already put it right.</p>';
   }
   html += '</div>';
 
   document.getElementById('stats-body').innerHTML = html;
+
+  document.querySelectorAll('[data-retry]').forEach(function(btn){
+    btn.onclick = function(){ ebRetryExercise(missed[parseInt(btn.getAttribute('data-retry'), 10)]); };
+  });
+}
+function ebEsc(s){
+  return String(s == null ? '' : s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 document.getElementById('stats-open').onclick = statsInit;
 document.getElementById('stats-back').onclick = function(){ showView('view-menu'); };
 
 /* ---------- menu wiring ---------- */
-document.querySelectorAll('.menu-btn').forEach(function(btn){
+/* Accordion: opening one subject closes the others, so the list stays short
+   however many variants each subject grows. */
+document.querySelectorAll('.group-btn').forEach(function(btn){
+  btn.onclick = function(){
+    var group = btn.parentNode;
+    var wasOpen = group.classList.contains('open');
+    document.querySelectorAll('.menu-group').forEach(function(g){
+      g.classList.remove('open');
+      var gb = g.querySelector('.group-btn');
+      if(gb) gb.setAttribute('aria-expanded', 'false');
+    });
+    if(!wasOpen){ group.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); }
+  };
+});
+document.querySelectorAll('.menu-btn[data-mode]').forEach(function(btn){
   btn.onclick = function(){
     var mode = btn.getAttribute('data-mode');
     if(PV_MODES[mode]) pvInit(mode);
