@@ -30,10 +30,18 @@
   .lede{font-size:15px; color:#5A5A5A; margin:0 0 1.4rem; max-width:34ch;}
 
   .menu-grid{display:flex; flex-direction:column; gap:14px;}
+  /* The UA stylesheet sets `button { color: buttontext }` as an explicit
+     declaration, so buttons do NOT inherit .app's colour. On desktop buttontext
+     is black and nothing looks wrong; on iOS it resolves to the system accent
+     and every unstyled button turns blue. Set a floor for all of them — element
+     specificity, so every class rule below still wins. */
+  button{color:#0A0A0A;}
+
   .menu-btn{
     display:flex; justify-content:space-between; align-items:center; gap:16px;
     border:none; border-radius:26px; padding:1.15rem 1.35rem 1.15rem 1.35rem;
     cursor:pointer; text-align:left; width:100%; position:relative; overflow:hidden;
+    color:#0A0A0A; -webkit-text-fill-color:currentColor;
     font-family:'Instrument Sans',sans-serif; transition:transform .14s ease;
   }
   .menu-btn:hover{transform:translateY(-2px);}
@@ -208,7 +216,10 @@
      vertical centring, which inline-block siblings do not. */
   .card-head{display:flex; align-items:center; flex-wrap:wrap; gap:14px; margin-bottom:1.1rem;}
   .card-head .tag{margin-bottom:0;}
-  #audio-play{display:inline-flex; align-items:center; gap:6px; background:#C6F462; color:#0A0A0A; border:1.5px solid #0A0A0A;}
+  #audio-play{display:inline-flex; align-items:center; gap:7px; background:#C6F462; color:#0A0A0A; border:1.5px solid #0A0A0A;}
+  /* Drawn, not typed. U+25B6 has emoji presentation on Apple platforms, so the
+     glyph gets replaced by a colour emoji and stops matching the button. */
+  .play-ico{width:11px; height:13px; flex:none; display:block;}
 
   .loading{font-family:'Instrument Sans',sans-serif; font-size:14px; color:#5A5A5A; padding:2.5rem 0; text-align:center;}
   .error-box{font-size:14px; color:#0A0A0A; background:#FFC9B5; border:1.5px solid #0A0A0A; border-radius:18px; padding:1rem;}
@@ -352,7 +363,8 @@
     </div>
   </div>
   <button class="stats-link" id="stats-open">See my stats <span>→</span></button>
-  <button class="signout-link" id="admin-open" style="display:none;">⚙ Admin</button>
+  <!-- U+FE0E forces the text form of the gear; without it Apple platforms substitute a colour emoji. -->
+  <button class="signout-link" id="admin-open" style="display:none;">⚙&#xFE0E; Admin</button>
   <button class="signout-link" id="sign-out" style="display:none;">Sign out</button>
 </div>
 
@@ -1185,7 +1197,9 @@ function audioRender(q){
   body.innerHTML =
     '<div class="card">' +
     '<div class="card-head"><span class="tag">' + q.source + ' \u00b7 ' + q.topic + '</span>' +
-    (playable ? '<button class="next" id="audio-play">\u25b6 Play clip</button>' : '') +
+    (playable ? '<button class="next" id="audio-play">' +
+      '<svg class="play-ico" viewBox="0 0 12 14" aria-hidden="true" focusable="false">' +
+      '<path d="M1.2 1.1 L11 7 L1.2 12.9 Z" fill="currentColor"/></svg>Play clip</button>' : '') +
     '<span class="voice-note">' + (q._clip ? 'AI voice' : 'browser voice') + '</span>' +
     '</div>' +
     (playable ? '' : '<p class="error-box">No clip for this sentence yet, and this browser has no built-in speech \u2014 so it can\u2019t be played here.</p>') +
