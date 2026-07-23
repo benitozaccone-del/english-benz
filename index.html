@@ -43,9 +43,9 @@
   .menu-btn[data-mode="trB2"]{background:#FFE8A3;}
   .menu-btn[data-mode="trC1"]{background:#B8E4FF;}
   .menu-btn[data-mode="trC2"]{background:#FFC9B5;}
-  .menu-btn[data-mode="audio"]{background:#0A0A0A; color:#FAFAF7;}
-  .menu-btn[data-mode="audio"] .sub{color:#B8B8B8;}
-  .menu-btn[data-mode="audio"] .icon-circle{background:#C6F462; color:#0A0A0A;}
+  .menu-btn[data-mode^="audio"]{background:#0A0A0A; color:#FAFAF7;}
+  .menu-btn[data-mode^="audio"] .sub{color:#B8B8B8;}
+  .menu-btn[data-mode^="audio"] .icon-circle{background:#C6F462; color:#0A0A0A;}
   .menu-btn .title{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif; font-weight:600; font-size:19px; line-height:1.15; letter-spacing:-0.02em;}
   .menu-btn .title em{font-style:italic; font-weight:500;}
   .menu-btn .sub{font-size:13px; color:#4A4A4A; margin-top:3px; line-height:1.35;}
@@ -115,6 +115,19 @@
   .opt:disabled{cursor:default;}
   .opt.correct{background:#C6F462; font-weight:600;}
   .opt.wrong{background:#FFC9B5; font-weight:600;}
+
+  /* Advanced transcription: the sentence as a mix of given words and inputs.
+     Inputs are sized to the word they replace, which is a hint in itself —
+     without it you are guessing word length as well as spelling. */
+  .dictation{font-family:'Instrument Sans',sans-serif; font-size:17px; line-height:2.4; margin:0 0 1.1rem;}
+  .dictation .dw-given{font-weight:700;}
+  input.dw{font-family:inherit; font-size:16px; padding:3px 8px; color:#0A0A0A;
+    border:none; border-bottom:2px solid #0A0A0A; border-radius:6px 6px 0 0; background:#F4F4EF;}
+  input.dw:focus{outline:none; background:#EDF9D2;}
+  input.dw.correct{background:#C6F462; font-weight:600;}
+  input.dw.wrong{background:#FFC9B5; font-weight:600;}
+  input.dw:disabled{opacity:1;}   /* Safari fades disabled inputs; the answer must stay readable */
+  .voice-note{font-family:'Instrument Sans',sans-serif; font-size:11px; color:#5A5A5A; margin-left:auto;}
   .feedback{font-size:14px; font-weight:600; margin:1rem 0 0; min-height:20px;}
   .bonus{margin-top:1rem; padding:0.9rem 1.1rem; background:#E5D6FF; border-radius:18px; border:1.5px solid #0A0A0A; font-family:'Bricolage Grotesque',sans-serif; font-size:14px; color:#0A0A0A; font-style:italic;}
 
@@ -232,12 +245,19 @@
       </div>
       <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z"/></svg></span>
     </button>
-    <button class="menu-btn" data-mode="audio">
+    <button class="menu-btn" data-mode="audioBasic">
       <div>
-        <div class="title">Spot the <em>transcription</em></div>
-        <div class="sub">Real news sentences, read aloud — pick what was said</div>
+        <div class="title">Spot the <em>transcription</em> · basic</div>
+        <div class="sub">Listen, then pick which of three was said</div>
       </div>
       <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M8 7v10M4 10v4M16 5v14M20 8v8"/></svg></span>
+    </button>
+    <button class="menu-btn" data-mode="audioAdvanced">
+      <div>
+        <div class="title">Spot the <em>transcription</em> · advanced</div>
+        <div class="sub">Type what you hear — only a few words are given</div>
+      </div>
+      <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11M8 7v7M4 10v4M16 5v9M20 8v6"/><path d="M4 20h16"/><path d="M9 17.5h6"/></svg></span>
     </button>
   </div>
   <button class="stats-link" id="stats-open">See my stats <span>→</span></button>
@@ -374,12 +394,34 @@ async function ebFetchExercises(type, level, n){
   try {
     var r = await ebSB.rpc('next_exercises', { p_type: type, p_level: level || '', p_limit: n });
     if(r.error || !Array.isArray(r.data) || !r.data.length) return null;
-    return r.data.map(function(row){
+    var qs = r.data.map(function(row){
       var q = Object.assign({}, row.payload);
       q._id = row.id;
       return q;
     });
+    if(type === 'audio') await ebAttachClips(qs);
+    return qs;
   } catch(e){ return null; }
+}
+
+/* Attach the pre-generated Speechify mp3 to each audio question, when one exists.
+   A sentence with no clip yet still plays — the game falls back to the browser
+   voice — so adding clips is incremental rather than all-or-nothing. */
+async function ebAttachClips(qs){
+  try {
+    var ids = qs.map(function(q){ return q._id; }).filter(Boolean);
+    if(!ids.length) return;
+    var c = await ebSB.from('audio_clips').select('exercise_id,storage_path').in('exercise_id', ids);
+    if(c.error || !c.data) return;
+    var byId = {};
+    c.data.forEach(function(x){ byId[x.exercise_id] = x.storage_path; });
+    qs.forEach(function(q){
+      var p = byId[q._id];
+      if(!p) return;
+      var pub = ebSB.storage.from('clips').getPublicUrl(p);
+      if(pub && pub.data && pub.data.publicUrl) q._clip = pub.data.publicUrl;
+    });
+  } catch(e){ /* clips are an enhancement; never block the game on them */ }
 }
 async function ebRecord(exerciseId, ok){
   if(!ebCloud() || !exerciseId) return;
@@ -836,6 +878,13 @@ var AUDIO_BATCH_SIZE = 3;
 var audioQueue = [];
 var audioQueueLoading = false;
 var audioScore = 0, audioTotal = 0, audioStats = { correct: 0, wrong: 0 };
+/* 'basic' picks one of three written options; 'advanced' is dictation — most of
+   the sentence is blank and you type it. The two keep separate lifetime stats
+   because they are not comparable; 'basic' keeps the original key so the
+   accuracy recorded before this split still counts. */
+var audioLevel = 'basic';
+var AUDIO_PREFILL = 0.15;                 // share of words shown as anchors in advanced
+function audioStatsKey(){ return audioLevel === 'advanced' ? AUDIO_STATS_KEY + '-advanced' : AUDIO_STATS_KEY; }
 
 function speakText(text){
   if(!('speechSynthesis' in window)) return false;
@@ -847,15 +896,41 @@ function speakText(text){
   return true;
 }
 
+/* Prefer the stored AI clip; fall back to the browser voice when a sentence has
+   no clip yet, or when playback fails (offline, autoplay policy, bad URL).
+   One reused <audio> element, so starting a new clip stops the previous one. */
+var audioPlayer = null;
+function playClip(q){
+  if(q && q._clip){
+    try {
+      if(!audioPlayer) audioPlayer = new Audio();
+      if('speechSynthesis' in window) window.speechSynthesis.cancel();
+      audioPlayer.src = q._clip;
+      audioPlayer.currentTime = 0;
+      var p = audioPlayer.play();
+      if(p && p.catch) p.catch(function(){ speakText(q.correct_sentence); });
+      return 'clip';
+    } catch(e){ /* fall through to the browser voice */ }
+  }
+  return speakText(q.correct_sentence) ? 'tts' : 'none';
+}
+function audioCanPlay(q){ return !!(q && q._clip) || ('speechSynthesis' in window); }
+/* Leaving the view must silence both sources, not just the browser voice. */
+function stopAudio(){
+  if('speechSynthesis' in window) window.speechSynthesis.cancel();
+  if(audioPlayer){ try { audioPlayer.pause(); } catch(e){} }
+}
+
 async function audioLoadStats(){
   try {
-    var res = await window.storage.get(AUDIO_STATS_KEY, false);
+    var res = await window.storage.get(audioStatsKey(), false);
     return res ? JSON.parse(res.value) : { correct: 0, wrong: 0 };
   } catch(e){ return { correct: 0, wrong: 0 }; }
 }
-async function audioSaveStats(s){ try{ await window.storage.set(AUDIO_STATS_KEY, JSON.stringify(s), false); }catch(e){} }
+async function audioSaveStats(s){ try{ await window.storage.set(audioStatsKey(), JSON.stringify(s), false); }catch(e){} }
 
-async function audioInit(){
+async function audioInit(level){
+  audioLevel = (level === 'advanced') ? 'advanced' : 'basic';
   audioScore = 0; audioTotal = 0;
   audioStats = await audioLoadStats();
   audioQueue = await audioLoadQueue();
@@ -866,9 +941,12 @@ async function audioInit(){
 function audioUpdateNote(){
   var total = (audioStats.correct||0) + (audioStats.wrong||0);
   var note = document.getElementById('audio-note');
+  var what = audioLevel === 'advanced' ? 'sentences typed' : 'clips';
   note.textContent = total
-    ? ('Lifetime accuracy: ' + Math.round((audioStats.correct/total)*100) + '% (' + total + ' clips)')
-    : 'Real news sentences, read aloud by your browser\u2019s voice.';
+    ? ('Lifetime accuracy (' + audioLevel + '): ' + Math.round((audioStats.correct/total)*100) + '% (' + total + ' ' + what + ')')
+    : (audioLevel === 'advanced'
+        ? 'Listen, then type what you hear. A few words are given to start you off.'
+        : 'Real news sentences, read aloud. Pick the one that was said.');
 }
 
 async function audioLoadQueue(){
@@ -925,25 +1003,48 @@ async function audioLoad(){
   audioRender(q);
 }
 
+/* Shared scoring tail for both levels. */
+async function audioScoreAnswer(q, ok){
+  if(ok) audioScore++;
+  if(ok) audioStats.correct = (audioStats.correct||0)+1; else audioStats.wrong = (audioStats.wrong||0)+1;
+  await audioSaveStats(audioStats);
+  await logAttempt('audio', ok);
+  if(q._id) ebRecord(q._id, ok);
+  document.getElementById('audio-score').textContent = 'Score: ' + audioScore;
+  document.getElementById('audio-next').style.display = 'inline-block';
+  document.getElementById('audio-next').textContent = 'Next clip';
+  audioUpdateNote();
+}
+
 function audioRender(q){
   audioTotal++;
   document.getElementById('audio-round').textContent = 'Question ' + audioTotal;
-  var supported = ('speechSynthesis' in window);
+  var playable = audioCanPlay(q);
   var body = document.getElementById('audio-body');
+
   body.innerHTML =
     '<div class="card">' +
     '<div class="card-head"><span class="tag">' + q.source + ' \u00b7 ' + q.topic + '</span>' +
-    (supported ? '<button class="next" id="audio-play">\u25b6 Play clip</button>' : '') +
+    (playable ? '<button class="next" id="audio-play">\u25b6 Play clip</button>' : '') +
+    '<span class="voice-note">' + (q._clip ? 'AI voice' : 'browser voice') + '</span>' +
     '</div>' +
-    (supported ? '' : '<p class="error-box">Your browser doesn\u2019t support built-in text-to-speech, so this game can\u2019t play audio here.</p>') +
-    '<div class="options" id="audio-options"></div>' +
+    (playable ? '' : '<p class="error-box">No clip for this sentence yet, and this browser has no built-in speech \u2014 so it can\u2019t be played here.</p>') +
+    (audioLevel === 'advanced'
+      ? '<div id="audio-dictation"></div><button class="next" id="audio-check" style="display:inline-flex;">Check answer</button>'
+      : '<div class="options" id="audio-options"></div>') +
     '<p class="feedback" id="audio-feedback"></p></div>';
 
-  if(supported){
-    document.getElementById('audio-play').onclick = function(){ speakText(q.correct_sentence); };
-    speakText(q.correct_sentence);
+  if(playable){
+    document.getElementById('audio-play').onclick = function(){ playClip(q); };
+    playClip(q);
   }
+  document.getElementById('audio-score').textContent = 'Score: ' + audioScore;
 
+  if(audioLevel === 'advanced') audioRenderDictation(q);
+  else audioRenderChoices(q);
+}
+
+function audioRenderChoices(q){
   var opts = shuffle([q.correct_sentence, q.decoy_1, q.decoy_2]);
   var el = document.getElementById('audio-options');
   var answered = false;
@@ -952,31 +1053,103 @@ function audioRender(q){
     btn.onclick = async function(){
       if(answered) return; answered = true;
       var ok = (opt === q.correct_sentence);
-      if(ok) audioScore++;
-      if(ok) audioStats.correct = (audioStats.correct||0)+1; else audioStats.wrong = (audioStats.wrong||0)+1;
-      await audioSaveStats(audioStats);
-      await logAttempt('audio', ok);
-      if(q._id) ebRecord(q._id, ok);
       var kids = el.children;
       for(var i=0;i<kids.length;i++){
         var b=kids[i]; b.disabled=true;
         if(b.textContent===q.correct_sentence) b.classList.add('correct'); else if(b===btn) b.classList.add('wrong');
       }
       var fb = document.getElementById('audio-feedback');
-      fb.textContent = ok ? 'Correct — that\u2019s exactly what was said.' : ('Not quite. It actually said: "' + q.correct_sentence + '"');
+      fb.textContent = ok ? 'Correct \u2014 that\u2019s exactly what was said.' : ('Not quite. It actually said: "' + q.correct_sentence + '"');
       fb.style.color = ok ? '#0B7A5B' : '#C22C46';
-      document.getElementById('audio-score').textContent = 'Score: ' + audioScore;
-      document.getElementById('audio-next').style.display = 'inline-block';
-      document.getElementById('audio-next').textContent = 'Next clip';
-      audioUpdateNote();
+      await audioScoreAnswer(q, ok);
     };
     el.appendChild(btn);
   });
-  document.getElementById('audio-score').textContent = 'Score: ' + audioScore;
 }
+
+/* ---------- advanced: dictation ----------
+   Most of the sentence is blank; a small share of words is given as anchors so
+   you can find your place in what you heard. Punctuation stays outside the
+   inputs \u2014 making someone type a closing quote tests nothing. */
+function audioSplitWord(w){
+  var lead  = (w.match(/^[^A-Za-z0-9]+/) || [''])[0];
+  var trail = (w.match(/[^A-Za-z0-9]+$/) || [''])[0];
+  var core  = w.slice(lead.length, w.length - trail.length);
+  if(!core) return { lead: '', core: '', trail: w };   // token is pure punctuation
+  return { lead: lead, core: core, trail: trail };
+}
+function audioNorm(s){ return (s||'').toLowerCase().replace(/[^a-z0-9']/g, ''); }
+function audioPrefillSet(n){
+  // Short sentences get nothing free \u2014 there is too little left to work from.
+  var want = n < 4 ? 0 : Math.max(1, Math.min(Math.round(n * AUDIO_PREFILL), n - 1));
+  var set = {};
+  for(var i=0; i<want; i++) set[Math.round(i * (n - 1) / Math.max(1, want))] = true;
+  return set;
+}
+
+function audioRenderDictation(q){
+  var words = String(q.correct_sentence).split(/\s+/).filter(Boolean);
+  var given = audioPrefillSet(words.length);
+  var host = document.getElementById('audio-dictation');
+  host.className = 'dictation';
+  host.innerHTML = '';
+  var inputs = [];
+
+  words.forEach(function(w, i){
+    var parts = audioSplitWord(w);
+    if(given[i] || !parts.core){
+      var span = document.createElement('span');
+      span.className = 'dw-given';
+      span.textContent = w;
+      host.appendChild(span);
+    } else {
+      if(parts.lead) host.appendChild(document.createTextNode(parts.lead));
+      var inp = document.createElement('input');
+      inp.className = 'dw';
+      inp.type = 'text';
+      inp.autocomplete = 'off';
+      inp.spellcheck = false;
+      inp.setAttribute('aria-label', 'word ' + (i+1));
+      inp.style.width = Math.max(3, parts.core.length + 1) + 'ch';
+      inp.setAttribute('data-expect', parts.core);
+      host.appendChild(inp);
+      inputs.push(inp);
+      if(parts.trail) host.appendChild(document.createTextNode(parts.trail));
+    }
+    host.appendChild(document.createTextNode(' '));
+  });
+
+  var checked = false;
+  async function audioCheckDictation(){
+    if(checked) return; checked = true;
+    var right = 0;
+    inputs.forEach(function(inp){
+      var expect = inp.getAttribute('data-expect');
+      var ok = audioNorm(inp.value) === audioNorm(expect);
+      inp.classList.add(ok ? 'correct' : 'wrong');
+      inp.disabled = true;
+      if(ok) right++; else inp.value = expect;   // show what it should have been
+    });
+    var all = (right === inputs.length);
+    var fb = document.getElementById('audio-feedback');
+    fb.textContent = all
+      ? 'Every word right \u2014 that is exactly what was said.'
+      : (right + ' of ' + inputs.length + ' right. It said: "' + q.correct_sentence + '"');
+    fb.style.color = all ? '#0B7A5B' : '#C22C46';
+    document.getElementById('audio-check').style.display = 'none';
+    await audioScoreAnswer(q, all);
+  }
+
+  document.getElementById('audio-check').onclick = audioCheckDictation;
+  host.addEventListener('keydown', function(e){
+    if(e.key === 'Enter'){ e.preventDefault(); audioCheckDictation(); }
+  });
+  if(inputs.length) inputs[0].focus();
+}
+
 document.getElementById('audio-next').onclick = audioLoad;
-document.getElementById('audio-back').onclick = function(){ if('speechSynthesis' in window) window.speechSynthesis.cancel(); showView('view-menu'); };
-document.getElementById('audio-end').onclick = async function(){ if('speechSynthesis' in window) window.speechSynthesis.cancel(); await audioSaveStats(audioStats); showView('view-menu'); };
+document.getElementById('audio-back').onclick = function(){ stopAudio(); showView('view-menu'); };
+document.getElementById('audio-end').onclick = async function(){ stopAudio(); await audioSaveStats(audioStats); showView('view-menu'); };
 document.getElementById('audio-reset').onclick = async function(){ audioStats = {correct:0, wrong:0}; await audioSaveStats(audioStats); audioUpdateNote(); };
 
 
@@ -1101,7 +1274,8 @@ document.querySelectorAll('.menu-btn').forEach(function(btn){
     else if(mode === 'trB2') trInit('B2');
     else if(mode === 'trC1') trInit('C1');
     else if(mode === 'trC2') trInit('C2');
-    else if(mode === 'audio') audioInit();
+    else if(mode === 'audioBasic') audioInit('basic');
+    else if(mode === 'audioAdvanced') audioInit('advanced');
   };
 });
 

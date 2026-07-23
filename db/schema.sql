@@ -109,6 +109,35 @@ create index if not exists phrasal_verb_examples_verb_idx
   on public.phrasal_verb_examples (phrasal_verb_id) where active;
 
 -- ---------------------------------------------------------------------------
+-- Audio clips
+--
+-- Text-to-speech is billed per character, so a sentence is synthesised ONCE and
+-- the mp3 is kept forever. content_hash covers text + voice + model: change the
+-- voice and you get a new clip, re-run the generator and you pay nothing.
+--
+-- The bytes live in Supabase Storage (bucket "clips"), not in a column. Postgres
+-- on the free tier is 500 MB and base64 in a row inflates every read; object
+-- storage serves the file directly to an <audio> element. This table is the
+-- queryable index over that bucket.
+-- ---------------------------------------------------------------------------
+create table if not exists public.audio_clips (
+  id            uuid primary key default gen_random_uuid(),
+  exercise_id   uuid references public.exercises (id) on delete cascade,
+  text          text not null,                        -- exactly what was spoken
+  voice_id      text not null,
+  model         text not null default 'simba-english',
+  format        text not null default 'mp3',
+  storage_path  text not null,                        -- path inside the bucket
+  bytes         integer not null default 0,
+  duration_ms   integer,
+  content_hash  text not null unique,                 -- sha256(text|voice|model)
+  created_at    timestamptz not null default now()
+);
+
+create index if not exists audio_clips_exercise_idx
+  on public.audio_clips (exercise_id);
+
+-- ---------------------------------------------------------------------------
 -- Per-user progress
 -- ---------------------------------------------------------------------------
 create table if not exists public.user_stats (
@@ -165,6 +194,11 @@ create table if not exists public.kv (
 alter table public.source_documents      enable row level security;
 alter table public.phrasal_verbs         enable row level security;
 alter table public.phrasal_verb_examples enable row level security;
+alter table public.audio_clips           enable row level security;
+
+drop policy if exists audio_clips_read on public.audio_clips;
+create policy audio_clips_read on public.audio_clips
+  for select to authenticated using (true);
 
 drop policy if exists phrasal_verbs_read on public.phrasal_verbs;
 create policy phrasal_verbs_read on public.phrasal_verbs

@@ -64,6 +64,9 @@ The app moved from a claude.ai Artifact to a self-contained page backed by
     an API key.
 -   `scripts/migrate-phrasal-verbs.mjs` — one-off; moved the original hard-coded
     verbs out of `index.html` into the database.
+-   `scripts/generate-audio.mjs` — reads every "Spot the transcription" sentence,
+    has Speechify voice it once, uploads the mp3 to the `clips` Storage bucket and
+    indexes it in `audio_clips`. Holds a Speechify key.
 -   `supabase/functions/generate-exercises/` — admin-only Edge Function behind the
     in-app Admin panel. Modes: `document` (PDF text), `url`, `news`, `reuse`, `list`.
 
@@ -87,6 +90,19 @@ back to built-in offline packs when offline or signed out. With `EB_CONFIG` blan
 -   **`source_documents` has RLS on and no read policy.** Ingested text can be
     private, so only the service role (pipeline, Edge Function) can read it. The
     admin panel lists documents through the Edge Function, never directly.
+-   **Audio is synthesised once and kept forever.** Speechify bills per character,
+    so `audio_clips` is a permanent repository, not a cache. The bytes sit in
+    Storage rather than a column because Postgres on the free tier is 500 MB and
+    base64 in a row inflates every read.
+-   **The "already voiced" check keys on the sentence, not on voice+model.** The
+    narrator is drawn from a pool for variety, so keying it on the full hash would
+    re-synthesise the entire library the moment the pool changed. The voice is
+    derived from a hash of the sentence, which spreads voices evenly while keeping
+    a retry after a failure on the same voice instead of paying twice.
+-   **Clips only exist for sentences of 5-15 words.** Below that transcription is
+    trivial; above it the advanced mode tests memory rather than listening.
+-   **A missing clip is not an error.** The game falls back to the browser voice,
+    so the library can be filled in incrementally.
 -   **The news search is guarded against fabrication.** Search output is accepted
     only as `<outlet> | <topic> | <sentence>` lines; if none come back the run
     fails loudly. An earlier version passed the model's apology prose to the
