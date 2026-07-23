@@ -293,8 +293,15 @@
     </div>
 
     <div class="admin-group">
-      <div class="admin-group-title">Saved material</div>
-      <p class="admin-hint">Everything ingested so far. Pick one to generate more exercises from text you already have.</p>
+      <div class="admin-group-title">Books on the shelf</div>
+      <p class="admin-hint">Ingested novels. Each run draws different passages, so the same book keeps yielding new exercises.</p>
+      <select id="admin-books"><option value="">Loading…</option></select>
+      <button class="auth-primary" id="admin-book-go">Generate from this book</button>
+    </div>
+
+    <div class="admin-group">
+      <div class="admin-group-title">All saved material</div>
+      <p class="admin-hint">Everything ingested so far — news, pages, PDFs and books. Generate again from text you already have.</p>
       <select id="admin-docs"><option value="">Loading…</option></select>
       <button class="auth-primary" id="admin-reuse">Generate from saved text</button>
     </div>
@@ -406,21 +413,28 @@ async function ebFetchExercises(type, level, n){
 
 /* Attach the pre-generated Speechify mp3 to each audio question, when one exists.
    A sentence with no clip yet still plays — the game falls back to the browser
-   voice — so adding clips is incremental rather than all-or-nothing. */
+   voice — so adding clips is incremental rather than all-or-nothing.
+
+   The bucket is private: some clips read sentences from copyrighted books, which
+   must not sit on an open URL. Signed links are minted per session and expire,
+   so a URL that leaks stops working. One batched call signs the whole queue. */
+var EB_CLIP_TTL = 7200;   // seconds; comfortably longer than a sitting
 async function ebAttachClips(qs){
   try {
     var ids = qs.map(function(q){ return q._id; }).filter(Boolean);
     if(!ids.length) return;
     var c = await ebSB.from('audio_clips').select('exercise_id,storage_path').in('exercise_id', ids);
-    if(c.error || !c.data) return;
+    if(c.error || !c.data || !c.data.length) return;
+
+    var paths = c.data.map(function(x){ return x.storage_path; });
+    var signed = await ebSB.storage.from('clips').createSignedUrls(paths, EB_CLIP_TTL);
+    if(signed.error || !signed.data) return;
+
+    var urlByPath = {};
+    signed.data.forEach(function(s){ if(s && s.path && s.signedUrl) urlByPath[s.path] = s.signedUrl; });
     var byId = {};
-    c.data.forEach(function(x){ byId[x.exercise_id] = x.storage_path; });
-    qs.forEach(function(q){
-      var p = byId[q._id];
-      if(!p) return;
-      var pub = ebSB.storage.from('clips').getPublicUrl(p);
-      if(pub && pub.data && pub.data.publicUrl) q._clip = pub.data.publicUrl;
-    });
+    c.data.forEach(function(x){ if(urlByPath[x.storage_path]) byId[x.exercise_id] = urlByPath[x.storage_path]; });
+    qs.forEach(function(q){ if(byId[q._id]) q._clip = byId[q._id]; });
   } catch(e){ /* clips are an enhancement; never block the game on them */ }
 }
 async function ebRecord(exerciseId, ok){
@@ -952,7 +966,12 @@ function audioUpdateNote(){
 async function audioLoadQueue(){
   try {
     var res = await window.storage.get(AUDIO_QUEUE_KEY, false);
-    return res ? JSON.parse(res.value) : [];
+    var queue = res ? JSON.parse(res.value) : [];
+    // The queue is cached with its clip URLs baked in, so questions queued before
+    // a sentence was voiced would keep playing the browser voice forever. Re-attach
+    // on load, and clips generated since then are picked up straight away.
+    if(queue.length) await ebAttachClips(queue);
+    return queue;
   } catch(e){ return []; }
 }
 async function audioSaveQueue(){
@@ -1350,20 +1369,26 @@ function adminReport(data){
   adminLoadDocs();
 }
 
-async function adminLoadDocs(){
-  var sel = document.getElementById('admin-docs');
-  if(!sel || !ebSB) return;
-  var data = await adminCall({ mode: 'list' }, null);
-  if(!data || !data.documents || !data.documents.length){
-    sel.innerHTML = '<option value="">Nothing saved yet</option>';
-    return;
-  }
-  sel.innerHTML = data.documents.map(function(d){
+/* One list call fills both dropdowns: the books one is the same data filtered,
+   so opening the panel costs a single request rather than two. */
+function adminFillSelect(sel, docs, withKind, empty){
+  if(!sel) return;
+  if(!docs.length){ sel.innerHTML = '<option value="">' + empty + '</option>'; return; }
+  sel.innerHTML = docs.map(function(d){
     var when = (d.created_at || '').slice(0,10);
-    var label = when + ' · ' + d.kind + ' · ' + (d.title || d.origin || 'untitled')
+    var label = (withKind ? when + ' · ' + d.kind + ' · ' : '')
+              + (d.title || d.origin || 'untitled')
               + ' (' + Math.round((d.char_count||0)/1000) + 'k)';
     return '<option value="' + d.id + '">' + label.replace(/</g,'&lt;') + '</option>';
   }).join('');
+}
+async function adminLoadDocs(){
+  if(!ebSB) return;
+  var data = await adminCall({ mode: 'list' }, null);
+  var docs = (data && data.documents) ? data.documents : [];
+  adminFillSelect(document.getElementById('admin-docs'), docs, true, 'Nothing saved yet');
+  adminFillSelect(document.getElementById('admin-books'),
+    docs.filter(function(d){ return d.kind === 'book'; }), false, 'No books ingested yet');
 }
 
 async function adminGenerate(){
@@ -1391,6 +1416,11 @@ document.getElementById('admin-url-go').onclick = async function(){
   var u = document.getElementById('admin-url').value.trim();
   if(!u){ document.getElementById('admin-log').textContent = 'Paste a URL first.'; return; }
   adminReport(await adminCall({ mode: 'url', url: u }, 'Fetching that page and generating…'));
+};
+document.getElementById('admin-book-go').onclick = async function(){
+  var id = document.getElementById('admin-books').value;
+  if(!id){ document.getElementById('admin-log').textContent = 'No books on the shelf yet.'; return; }
+  adminReport(await adminCall({ mode: 'reuse', document_id: id }, 'Reading a passage and generating…'));
 };
 document.getElementById('admin-reuse').onclick = async function(){
   var id = document.getElementById('admin-docs').value;

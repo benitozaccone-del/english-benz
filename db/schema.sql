@@ -27,7 +27,7 @@
 -- ---------------------------------------------------------------------------
 create table if not exists public.source_documents (
   id            uuid primary key default gen_random_uuid(),
-  kind          text not null check (kind in ('pdf', 'url', 'news', 'media', 'text')),
+  kind          text not null check (kind in ('pdf', 'book', 'url', 'news', 'media', 'text')),
   title         text,                                 -- human label shown in the admin list
   origin        text,                                 -- filename, URL, or search description
   content       text not null,                        -- the extracted plain text
@@ -199,6 +199,14 @@ alter table public.audio_clips           enable row level security;
 drop policy if exists audio_clips_read on public.audio_clips;
 create policy audio_clips_read on public.audio_clips
   for select to authenticated using (true);
+
+-- The mp3s themselves live in the "clips" storage bucket, which is PRIVATE.
+-- Some clips are read from copyrighted books, and a public bucket would put
+-- narrated book sentences on an open, unauthenticated URL. Signed-in users can
+-- mint short-lived signed URLs instead; this policy is what allows that.
+drop policy if exists clips_read_authenticated on storage.objects;
+create policy clips_read_authenticated on storage.objects
+  for select to authenticated using (bucket_id = 'clips');
 
 drop policy if exists phrasal_verbs_read on public.phrasal_verbs;
 create policy phrasal_verbs_read on public.phrasal_verbs

@@ -297,7 +297,17 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const material = docText.slice(0, MAX_CHARS);
+    // A book runs to hundreds of thousands of characters. Always taking the first
+    // window would mean every run mined chapter one and produced the same
+    // exercises; take a random window instead, snapped forward to a sentence
+    // boundary so the passage does not open mid-word.
+    const material = (() => {
+      if (docText.length <= MAX_CHARS) return docText;
+      const start = Math.floor(Math.random() * (docText.length - MAX_CHARS));
+      const dot = docText.indexOf('. ', start);
+      const from = (dot >= 0 && dot < start + 500) ? dot + 2 : start;
+      return docText.slice(from, from + MAX_CHARS);
+    })();
     const rows: any[] = [];
     const errors: string[] = [];
 

@@ -75,6 +75,12 @@ const MAX_WORDS = parseInt(flag('max-words', '15'), 10) || 15;
 const API = 'https://api.speechify.ai/v1';
 const BUCKET = 'clips';
 
+// Free tier: 50,000 characters a month, a hard cap rather than an overage charge,
+// and 1 request/second on /v1/audio/speech. Both numbers are worth respecting
+// here rather than discovering them as a wall of 429s halfway through a run.
+const FREE_CHAR_CAP = parseInt(flag('cap', '50000'), 10) || 50000;
+const MIN_GAP_MS = parseInt(flag('gap', '1100'), 10) || 1100;
+
 const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 const hash = (s) => createHash('sha256').update(s).digest('hex');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -180,10 +186,26 @@ if (tooShort || tooLong) console.log(`skipped ${tooShort} under ${MIN_WORDS} wor
 console.log(FORCED_VOICE ? `voice "${FORCED_VOICE}"` : `voices: ${VOICE_POOL.map((v) => v.id).join(', ')}\n`);
 if (!todo.length) { console.log('Nothing to do — every eligible sentence already has a clip.'); process.exit(0); }
 
+// Spend so far this calendar month, inferred from the clips we made. It is our
+// own tally, not Speechify's — anything voiced outside this script is invisible
+// to it — but it is enough to stop a run walking into a hard cap mid-way.
+const monthStart = new Date(Date.UTC(new Date().getUTCFullYear(), new Date().getUTCMonth(), 1)).toISOString();
+const { data: monthRows } = await db.from('audio_clips').select('text').gte('created_at', monthStart);
+const spent = (monthRows || []).reduce((n, r) => n + (r.text || '').length, 0);
+const planned = todo.reduce((n, t) => n + t.text.length, 0);
+const left = FREE_CHAR_CAP - spent;
+
+console.log(`\nbudget: ~${spent} of ${FREE_CHAR_CAP} characters used this month, ~${left} left`);
+console.log(`this run would use ~${planned}`);
+if (planned > left) {
+  console.error(`\nStopping: that would exceed the cap by ~${planned - left} characters.`);
+  console.error(`Lower --limit, or raise --cap if you are on a paid plan.`);
+  process.exit(1);
+}
+
 if (DRY_RUN) {
-  const chars = todo.reduce((n, t) => n + t.text.length, 0);
   todo.forEach((t, i) => console.log(`  ${String(i + 1).padStart(3)}. [${String(t.words).padStart(2)}w ${t.voice.padEnd(12)}] ${t.text}`));
-  console.log(`\nDry run — nothing sent. Would synthesise ${chars} characters.`);
+  console.log(`\nDry run — nothing sent. Would synthesise ${planned} characters.`);
   process.exit(0);
 }
 
@@ -222,7 +244,7 @@ for (const item of todo) {
     made++;
     billed += out.billable_characters_count || item.text.length;
     console.log(`  ✓ ${(bytes.length / 1024).toFixed(0).padStart(3)} kB  ${item.voice.padEnd(12)} ${item.text.slice(0, 55)}`);
-    await sleep(350);
+    await sleep(MIN_GAP_MS);   // free tier allows 1 request/second
   } catch (e) {
     failures.push({ text: item.text, why: e.message });
     console.warn(`  ✗ ${item.text.slice(0, 60)} — ${e.message}`);
