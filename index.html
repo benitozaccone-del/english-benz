@@ -21,9 +21,15 @@
 <h2 class="sr-only">English Benz: phrasal verb quiz, news translation quiz, and audio transcription game</h2>
 
 <style>
-  .app{font-family:'Instrument Sans',-apple-system,sans-serif; color:#0A0A0A; background:#FAFAF7; padding:1.5rem 0; border-radius:24px;}
+  /* viewport-fit=cover lets the page fill the whole screen, so it must inset its
+     own content past the Dynamic Island (top) and home indicator (bottom); max()
+     keeps the normal 1.5rem breathing room on devices with no insets. */
+  .app{font-family:'Instrument Sans',-apple-system,sans-serif; color:#0A0A0A; background:#FAFAF7;
+    padding:max(1.5rem, env(safe-area-inset-top)) 0 max(1.5rem, env(safe-area-inset-bottom)); border-radius:24px;}
   .app *{box-sizing:border-box;}
-  .app-inner{max-width:520px; margin:0 auto; padding:0 1rem;}
+  /* Horizontal insets matter in landscape, where the notch eats one side. */
+  .app-inner{max-width:520px; margin:0 auto;
+    padding:0 max(1rem, env(safe-area-inset-right)) 0 max(1rem, env(safe-area-inset-left));}
   .eyebrow{font-family:'Instrument Sans',sans-serif; font-size:12px; font-weight:500; letter-spacing:0.06em; text-transform:uppercase; color:#0A0A0A; background:#FFFFFF; display:inline-block; padding:6px 14px; border-radius:999px; margin-bottom:0.9rem;}
   .h1{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif; font-weight:700; font-size:2.4rem; margin:0 0 0.4rem; letter-spacing:-0.03em; line-height:1.05;}
   .h1 em{font-style:italic; font-weight:600; color:#0A0A0A;}
@@ -226,7 +232,10 @@
   .sr-only{position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0,0,0,0);}
 
   .auth-card{display:flex; flex-direction:column; gap:12px; max-width:340px;}
-  .auth-card input{font-family:'Instrument Sans',sans-serif; font-size:15px; padding:14px 16px; border:1.5px solid #0A0A0A; border-radius:14px; background:#FFFFFF; color:#0A0A0A;}
+  /* 16px is the floor: iOS Safari auto-zooms the whole page when you focus any
+     input smaller than that, and it does not reliably zoom back out — which reads
+     as "the page resized itself". Applies to every focusable field in the app. */
+  .auth-card input{font-family:'Instrument Sans',sans-serif; font-size:16px; padding:13px 16px; border:1.5px solid #0A0A0A; border-radius:14px; background:#FFFFFF; color:#0A0A0A;}
   .auth-card input:focus{outline:2px solid #C6F462; outline-offset:1px;}
   .auth-primary{background:#0A0A0A; color:#FAFAF7; border:none; border-radius:999px; padding:14px; font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:15px; cursor:pointer;}
   .auth-primary:hover{transform:translateY(-1px);}
@@ -240,7 +249,7 @@
   .admin-group{display:flex; flex-direction:column; gap:10px; border:1.5px solid #0A0A0A; border-radius:18px; padding:1rem;}
   .admin-group-title{font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:14px;}
   .admin-hint{font-family:'Instrument Sans',sans-serif; font-size:12.5px; color:#5A5A5A; margin:0; line-height:1.45;}
-  .admin-group select{font-family:'Instrument Sans',sans-serif; font-size:14px; padding:12px 14px; border:1.5px solid #0A0A0A; border-radius:14px; background:#FFFFFF; color:#0A0A0A; max-width:100%;}
+  .admin-group select{font-family:'Instrument Sans',sans-serif; font-size:16px; padding:12px 14px; border:1.5px solid #0A0A0A; border-radius:14px; background:#FFFFFF; color:#0A0A0A; max-width:100%; width:100%;}
   .auth-primary[disabled]{opacity:.45; cursor:default; transform:none;}
   .signout-link{display:inline-flex; align-items:center; gap:6px; background:none; border:none; color:#5A5A5A; font-family:'Instrument Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer; margin-top:16px; padding:4px;}
   .signout-link:hover{color:#0A0A0A;}
