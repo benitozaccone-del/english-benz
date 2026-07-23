@@ -53,17 +53,46 @@ The app moved from a claude.ai Artifact to a self-contained page backed by
 -   `index.html` — the whole app, one standalone HTML file. Signs users
     in with email/password (`EB_CONFIG` holds the Supabase URL + anon key).
 -   `db/schema.sql` — tables and row-level security. `exercises` is the shared
-    content repository; `presentations` tracks per-user "times seen" per exercise;
-    `kv` backs the score/activity/queue blobs so existing game logic syncs with no
-    change. RPCs: `next_exercises` (least-seen-first) and `record_presentation`.
--   `scripts/generate-content.mjs` — local pipeline; generates exercises via the
-    Claude API (Sonnet 5 + web search) and inserts them. The **only** component
-    that holds an API key. The browser app never calls the Claude API — it reads
-    exercises from the database and falls back to built-in offline packs when
-    offline or signed out.
+    content repository; `phrasal_verbs` + `phrasal_verb_examples` hold the phrasal
+    verb game; `source_documents` keeps the raw text everything was generated from;
+    `presentations` tracks per-user "times seen" per exercise; `kv` backs the
+    score/activity/queue blobs so existing game logic syncs with no change.
+    RPCs: `next_exercises` (least-seen-first), `record_presentation`,
+    `next_phrasal_verbs` (pool for one game mode, examples inlined).
+-   `scripts/generate-content.mjs` — local pipeline; searches the news, stores what
+    it found, then generates translation, listening and phrasal-verb content. Holds
+    an API key.
+-   `scripts/migrate-phrasal-verbs.mjs` — one-off; moved the original hard-coded
+    verbs out of `index.html` into the database.
+-   `supabase/functions/generate-exercises/` — admin-only Edge Function behind the
+    in-app Admin panel. Modes: `document` (PDF text), `url`, `news`, `reuse`, `list`.
 
-The app degrades gracefully: with `EB_CONFIG` blank (or no connection) it runs
-fully offline on `localStorage`.
+The browser app never calls the Claude API — it reads from the database and falls
+back to built-in offline packs when offline or signed out. With `EB_CONFIG` blank
+(or no connection) it runs fully offline on `localStorage`.
+
+### Design decisions worth keeping
+
+-   **Two tables for phrasal verbs, not one.** A verb's meaning and CEFR level are
+    written once; usage examples accumulate every time the news pipeline finds that
+    verb in a real sentence. Splitting them lets news enrich a known verb without
+    touching it.
+-   **`categories` is a `text[]`, and the tiers overlap on purpose.** The top-200
+    list is a superset of the top-100 one, so a core verb carries both tags. A
+    category filter is then a single array containment test rather than a union.
+-   **Raw material is stored before anything is generated from it.** Every
+    generated row carries a `source_document_id`, so a PDF uploaded once can be
+    mined again months later without re-uploading, and any exercise can be traced
+    back to the text it came from.
+-   **`source_documents` has RLS on and no read policy.** Ingested text can be
+    private, so only the service role (pipeline, Edge Function) can read it. The
+    admin panel lists documents through the Edge Function, never directly.
+-   **The news search is guarded against fabrication.** Search output is accepted
+    only as `<outlet> | <topic> | <sentence>` lines; if none come back the run
+    fails loudly. An earlier version passed the model's apology prose to the
+    formatting stage, which then invented quotes and attributed them to real
+    outlets. Search by *topic*, never by outlet name — searching "stories by BBC
+    News" returns pages about the BBC, not article text.
 
 ------------------------------------------------------------------------
 

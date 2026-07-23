@@ -65,6 +65,25 @@ node generate-content.mjs 12   # or a bigger batch
 Re-run it any time you want more content — duplicates are skipped automatically.
 This is the only paid step; the browser app itself makes no Claude API calls.
 
+Each run stores the sentences it found in `source_documents` before generating
+anything, and every exercise it writes points back at that row. Nothing is ever
+generated from text that wasn't kept.
+
+## 5b. Admin panel (that one account only)
+
+Signed in as the admin address, the menu shows **⚙ Admin**. Four ways in, all of
+which store their raw text and then produce translation, listening **and**
+phrasal-verb exercises:
+
+| Control | What it does |
+|---|---|
+| **Fetch fresh news** | Web-searches recent articles and builds exercises from real sentences |
+| **Generate from URL** | Fetches a page server-side, strips the HTML, generates from the text |
+| **Generate from PDF** | Extracts text in the browser, generates from it |
+| **Generate from saved text** | Re-uses anything ingested earlier — no re-upload, no second search |
+
+The Anthropic key lives only in the Edge Function's secrets, never in the page.
+
 ## 6. The app is wired to Supabase
 
 `index.html` already has your Project URL and anon key in the `EB_CONFIG`
