@@ -266,6 +266,9 @@
   .admin-group{display:flex; flex-direction:column; gap:10px; border:1.5px solid #0A0A0A; border-radius:18px; padding:1rem;}
   .admin-group-title{font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:14px;}
   .admin-hint{font-family:'Instrument Sans',sans-serif; font-size:12.5px; color:#5A5A5A; margin:0; line-height:1.45;}
+  .admin-song-msg{font-family:'Instrument Sans',sans-serif; font-size:13px; margin:4px 0 0; padding:8px 12px; border-radius:10px; background:#F0F8F4; color:#0B7A5B; border:1px solid #B2DDD0;}
+  .admin-song-msg.error{background:#FFF0F2; color:#C22C46; border-color:#F5BFC8;}
+  .admin-song-msg.ok{background:#F0F8F4; color:#0B7A5B; border-color:#B2DDD0;}
   .admin-group select{font-family:'Instrument Sans',sans-serif; font-size:16px; padding:12px 14px; border:1.5px solid #0A0A0A; border-radius:14px; background:#FFFFFF; color:#0A0A0A; max-width:100%; width:100%;}
   .auth-primary[disabled]{opacity:.45; cursor:default; transform:none;}
   .signout-link{display:inline-flex; align-items:center; gap:6px; background:none; border:none; color:#5A5A5A; font-family:'Instrument Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer; margin-top:16px; padding:4px;}
@@ -445,6 +448,7 @@
         </select>
       </label>
       <button class="auth-primary" id="admin-song-go">Fetch lyrics</button>
+      <p class="admin-song-msg" id="admin-song-msg" style="display:none;"></p>
     </div>
 
     <div class="admin-group">
@@ -2025,17 +2029,24 @@ document.getElementById('admin-song-go').onclick = async function(){
   var artist = document.getElementById('admin-song-artist').value.trim();
   var title = document.getElementById('admin-song-title').value.trim();
   var kind = document.getElementById('admin-song-kind').value;
-  var log = document.getElementById('admin-log');
-  if(!artist || !title){ log.textContent = 'Give both an artist and a title.'; return; }
+  var msgEl = document.getElementById('admin-song-msg');
+  if(!artist || !title){
+    msgEl.textContent = 'Give both an artist and a title.';
+    msgEl.className = 'admin-song-msg error'; msgEl.style.display = '';
+    return;
+  }
+  msgEl.textContent = kind === 'album' ? 'Looking up the album…' : 'Looking up the song…';
+  msgEl.className = 'admin-song-msg'; msgEl.style.display = '';
   var data = await adminCall(
     { mode: kind, artist: artist, title: title },
     kind === 'album' ? 'Looking up the album…' : 'Looking up the song…'
   );
-  if(!data) return;
+  if(!data){ msgEl.style.display = 'none'; return; }
   var msg = 'Added ' + (data.songs || 0) + ' song' + ((data.songs === 1) ? '' : 's')
           + ' and ' + (data.lyric_lines || 0) + ' lyric exercise' + ((data.lyric_lines === 1) ? '' : 's') + '.';
   if(data.errors && data.errors.length) msg += ' Skipped: ' + data.errors.slice(0, 4).join(' | ');
-  log.textContent = msg;
+  msgEl.textContent = msg;
+  msgEl.className = 'admin-song-msg ' + (data.songs > 0 ? 'ok' : 'error');
 };
 document.getElementById('admin-book-go').onclick = async function(){
   var id = document.getElementById('admin-books').value;
