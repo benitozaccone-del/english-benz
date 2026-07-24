@@ -1577,8 +1577,8 @@ function _spDestroy(){
   _spPos = 0; _spDur = 0;
 }
 
-function _spFmtMs(ms){
-  var s = Math.floor(ms / 1000), m = Math.floor(s / 60);
+function _spFmtSec(sec){
+  var s = Math.floor(sec), m = Math.floor(s / 60);
   return m + ':' + String(s % 60).padStart(2, '0');
 }
 
@@ -1601,11 +1601,11 @@ function _spInit(trackId){
           _spPos = e.data.position; _spDur = e.data.duration;
           var sl = document.getElementById('sp-slider');
           if(sl && !_spSeeking){
-            sl.max = Math.max(1, Math.floor(_spDur / 1000));
-            sl.value = Math.floor(_spPos / 1000);
+            sl.max = Math.max(1, Math.floor(_spDur));
+            sl.value = Math.floor(_spPos);
           }
           var tm = document.getElementById('sp-time');
-          if(tm) tm.textContent = _spFmtMs(_spPos) + ' / ' + _spFmtMs(_spDur);
+          if(tm) tm.textContent = _spFmtSec(_spPos) + ' / ' + _spFmtSec(_spDur);
         });
       }
     );
@@ -1728,15 +1728,15 @@ function lyricsRender(q){
   if(trackId){
     _spInit(trackId);
     document.getElementById('sp-back').onclick = function(){
-      if(_spCtrl) _spCtrl.seek(Math.max(0, _spPos - 5000));
+      if(_spCtrl) _spCtrl.seek(Math.max(0, _spPos - 5));
     };
     document.getElementById('sp-fwd').onclick = function(){
-      if(_spCtrl) _spCtrl.seek(_spPos + 5000);
+      if(_spCtrl) _spCtrl.seek(_spPos + 5);
     };
     var sl = document.getElementById('sp-slider');
     sl.addEventListener('input', function(){ _spSeeking = true; });
     sl.addEventListener('change', function(){
-      if(_spCtrl) _spCtrl.seek(parseInt(sl.value, 10) * 1000);
+      if(_spCtrl) _spCtrl.seek(parseInt(sl.value, 10));
       _spSeeking = false;
     });
   }
