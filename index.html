@@ -57,10 +57,10 @@
   .menu-group{display:flex; flex-direction:column; gap:8px;}
   .group-btn[data-group-btn="pv"]{background:linear-gradient(105deg,#C6F462 0%,#A8E85C 100%);}
   .group-btn[data-group-btn="tr"]{background:linear-gradient(105deg,#C9B3FF 0%,#FFB9D8 100%);}
-  .group-btn[data-mode="lyrics"]{background:linear-gradient(105deg,#0A0A0A 0%,#26314A 100%); color:#FAFAF7;}
+  .group-btn[data-group-btn="lyrics"]{background:linear-gradient(105deg,#0A0A0A 0%,#26314A 100%); color:#FAFAF7;}
   .group-btn[data-group-btn="listen"]{background:linear-gradient(105deg,#FFC9B5 0%,#FFE8A3 100%); color:#0A0A0A;}
-  .group-btn[data-mode="lyrics"] .sub{color:#C3C7D2;}
-  .group-btn[data-mode="lyrics"] .icon-circle{background:#C6F462; color:#0A0A0A;}
+  .group-btn[data-group-btn="lyrics"] .sub{color:#C3C7D2;}
+  .group-btn[data-group-btn="lyrics"] .icon-circle{background:#C6F462; color:#0A0A0A;}
   .group-btn .chev svg{transition:transform .18s ease;}
   .menu-group.open .group-btn .chev svg{transform:rotate(180deg);}
 
@@ -83,6 +83,13 @@
   .menu-group[data-group="listen"] .menu-sub{border-left-color:#FFC9B5;}
   .menu-group[data-group="listen"] .variant-btn{background:#FFF6EE; border-color:#C97A52;}
   .menu-group[data-group="listen"] .variant-btn .icon-circle{background:#FFE8A3;}
+  .menu-group[data-group="lyrics"] .menu-sub{border-left-color:#C6F462;}
+  .menu-group[data-group="lyrics"] .variant-btn{background:#EEF0F5; border-color:#26314A;}
+  .menu-group[data-group="lyrics"] .variant-btn .icon-circle{background:#C6F462; color:#0A0A0A;}
+  .lyrics-artist-grid{display:flex; flex-direction:column; gap:8px;}
+  .lyrics-artist-title{font-family:'Bricolage Grotesque',sans-serif; font-weight:600; font-size:18px; margin:0 0 12px; letter-spacing:-0.02em;}
+  .lyrics-artist-btn{background:#FFFFFF; border:1.5px solid #0A0A0A; border-radius:14px; padding:14px 16px; font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:15px; color:#0A0A0A; text-align:left; cursor:pointer;}
+  .lyrics-artist-btn:hover{background:#0A0A0A; color:#FAFAF7;}
   .menu-btn .title{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif; font-weight:600; font-size:19px; line-height:1.15; letter-spacing:-0.02em;}
   .menu-btn .title em{font-style:italic; font-weight:500;}
   .menu-btn .sub{font-size:13px; color:#4A4A4A; margin-top:3px; line-height:1.35;}
@@ -406,13 +413,29 @@
     </div>
 
     <div class="menu-group" data-group="lyrics">
-      <button class="menu-btn group-btn" data-mode="lyrics">
+      <button class="menu-btn group-btn" data-group-btn="lyrics" aria-expanded="false">
         <div>
           <div class="title">Fill the lyrics</div>
           <div class="sub">Name the song, then type the missing words</div>
         </div>
-        <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+        <span class="icon-circle chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
       </button>
+      <div class="menu-sub">
+        <button class="menu-btn variant-btn" data-mode="lyrics-auto">
+          <div>
+            <div class="title">Auto</div>
+            <div class="sub">Algorithm picks for you</div>
+          </div>
+          <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg></span>
+        </button>
+        <button class="menu-btn variant-btn" data-mode="lyrics-artist">
+          <div>
+            <div class="title">By artist</div>
+            <div class="sub">Choose who you want to practice</div>
+          </div>
+          <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+        </button>
+      </div>
     </div>
   </div>
   <button class="stats-link" id="stats-open">See my stats <span>→</span></button>
@@ -1530,6 +1553,7 @@ var LYRICS_STATS_KEY = 'lyrics-stats';
 var LYRICS_QUEUE_TARGET = 3, LYRICS_BATCH_SIZE = 3;
 var lyricsQueue = [], lyricsQueueLoading = false;
 var lyricsScore = 0, lyricsTotal = 0, lyricsResults = [], lyricsStats = { correct: 0, wrong: 0 };
+var lyricsMode = 'auto', lyricsArtist = null;
 
 /* Which words to hide. Blanking is weighted towards longer words: removing "the"
    or "a" tests nothing, and a line pocked with function-word gaps reads as noise
@@ -1577,7 +1601,6 @@ function _spLoad(fn){
 
 function _spDestroy(){
   if(_spCtrl){ try{ _spCtrl.destroy(); }catch(e){} _spCtrl = null; }
-  _spPos = 0; _spDur = 0;
 }
 
 
@@ -1627,21 +1650,73 @@ async function lyricsLoadStats(){
 }
 async function lyricsSaveStats(){ try{ await window.storage.set(LYRICS_STATS_KEY, JSON.stringify(lyricsStats), false); }catch(e){} }
 
-async function lyricsInit(){
+async function lyricsInit(mode, artist){
+  lyricsMode = mode || 'auto';
+  lyricsArtist = artist || null;
   lyricsScore = 0; lyricsTotal = 0; lyricsResults = [];
   lyricsStats = await lyricsLoadStats();
+  lyricsQueue = []; lyricsQueueLoading = false;
   showView('view-lyrics');
   lyricsUpdateNote();
-  lyricsLoad();
+  if(lyricsMode === 'artist' && !lyricsArtist){
+    lyricsShowArtistPicker();
+  } else {
+    lyricsLoad();
+  }
 }
 function lyricsUpdateNote(){
+  var el = document.getElementById('lyrics-note');
+  if(lyricsMode === 'artist' && lyricsArtist){ el.textContent = lyricsArtist; return; }
   var total = (lyricsStats.correct || 0) + (lyricsStats.wrong || 0);
-  document.getElementById('lyrics-note').textContent = total
+  el.textContent = total
     ? ('Lifetime accuracy: ' + Math.round((lyricsStats.correct / total) * 100) + '% (' + total + ' lines)')
     : 'The song is the clue. Recall the line, then fill the gaps.';
 }
 
+async function lyricsShowArtistPicker(){
+  var body = document.getElementById('lyrics-body');
+  body.innerHTML = '<div class="loading">Loading artists…</div>';
+  try {
+    if(!ebCloud()){ body.innerHTML = '<p class="weak">Sign in to use this mode.</p>'; return; }
+    var r = await ebSB.from('songs').select('artist').order('artist');
+    if(r.error || !r.data || !r.data.length){ body.innerHTML = '<p class="weak">No artists found.</p>'; return; }
+    var artists = Array.from(new Set(r.data.map(function(x){ return x.artist; }).filter(Boolean))).sort();
+    body.innerHTML = '<div class="lyrics-artist-grid">' +
+      '<p class="lyrics-artist-title">Who do you want to practice?</p>' +
+      artists.map(function(a){
+        return '<button class="lyrics-artist-btn" data-artist="' + ebEsc(a) + '">' + ebEsc(a) + '</button>';
+      }).join('') +
+    '</div>';
+    body.querySelectorAll('.lyrics-artist-btn').forEach(function(btn){
+      btn.onclick = function(){
+        lyricsArtist = btn.getAttribute('data-artist');
+        lyricsUpdateNote();
+        lyricsLoad();
+      };
+    });
+  } catch(e){ body.innerHTML = '<p class="weak">Could not load artists.</p>'; }
+}
+
+async function lyricsFetchByArtist(artist, n){
+  if(!ebCloud()) return [];
+  try {
+    var r = await ebSB.from('exercises')
+      .select('id, payload')
+      .eq('type', 'lyrics')
+      .eq('source', artist)
+      .limit(Math.min((n || LYRICS_BATCH_SIZE) * 6, 60));
+    if(r.error || !r.data || !r.data.length) return [];
+    var shuffled = r.data.slice().sort(function(){ return Math.random() - 0.5; });
+    return shuffled.slice(0, n || LYRICS_BATCH_SIZE).map(function(row){
+      var q = Object.assign({}, row.payload);
+      q._id = row.id;
+      return q;
+    });
+  } catch(e){ return []; }
+}
+
 async function lyricsFetchBatch(n){
+  if(lyricsMode === 'artist' && lyricsArtist) return lyricsFetchByArtist(lyricsArtist, n);
   var rows = await ebFetchExercises('lyrics', '', n || LYRICS_BATCH_SIZE);
   return rows || [];
 }
@@ -2000,7 +2075,8 @@ function ebReturnToMenu(){
 }
 function ebLaunchMode(mode){
   try{ localStorage.setItem('eb-last-mode', mode); }catch(e){}
-  if(mode === 'lyrics') lyricsInit();
+  if(mode === 'lyrics-auto') lyricsInit('auto');
+  else if(mode === 'lyrics-artist') lyricsInit('artist');
   else if(PV_MODES[mode]) pvInit(mode);
   else if(mode === 'trB2') trInit('B2');
   else if(mode === 'trC1') trInit('C1');
