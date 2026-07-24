@@ -1686,6 +1686,7 @@ async function lyricsShowArtistPicker(){
     if(r.error || !r.data || !r.data.length){ body.innerHTML = '<p class="weak">No artists found.</p>'; return; }
     var artists = Array.from(new Set(r.data.map(function(x){ return x.artist; }).filter(Boolean))).sort();
 
+    document.querySelector('#view-lyrics .actions').style.display = 'none';
     body.innerHTML =
       '<div class="lyrics-artist-picker">' +
         '<p class="lyrics-artist-title">Who do you want to practice?</p>' +
@@ -1791,6 +1792,7 @@ function lyricsRender(q){
   document.getElementById('lyrics-score').textContent = 'Score: ' + lyricsScore;
   renderDots('lyrics-dots', lyricsResults);
 
+  document.querySelector('#view-lyrics .actions').style.display = '';
   _spDestroy();
   lyricsSavePending(q);
   var meta = (q.album ? q.album : '') + (q.year ? (q.album ? ' \u00b7 ' : '') + q.year : '');
