@@ -23,22 +23,21 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { console.error('Missing SUPABASE_UR
 
 const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 
-// Load all songs that have a year
-const { data: songs, error: se } = await db.from('songs').select('artist, title, year').not('year', 'is', null);
+// Build song_id → year map from songs that have a year
+const { data: songs, error: se } = await db.from('songs').select('id, year').not('year', 'is', null);
 if (se) { console.error('DB error:', se.message); process.exit(1); }
 if (!songs?.length) { console.log('No songs with year found — run backfill-years.mjs first.'); process.exit(0); }
 
-// Build a lookup map keyed by "artist|title"
-const yearMap = new Map();
-for (const s of songs) yearMap.set((s.artist + '|' + s.title).toLowerCase(), s.year);
+const yearById = new Map(songs.map(s => [s.id, s.year]));
 console.log(`${songs.length} songs with year loaded`);
 
-// Fetch all lyrics exercises that lack year in payload
+// Fetch lyrics exercises missing year, joining through song_id FK
 const { data: rows, error: re } = await db
   .from('exercises')
-  .select('id, payload')
+  .select('id, song_id, payload')
   .eq('type', 'lyrics')
-  .is('payload->year', null);
+  .is('payload->year', null)
+  .not('song_id', 'is', null);
 if (re) { console.error('DB error:', re.message); process.exit(1); }
 if (!rows?.length) { console.log('All exercise payloads already have year.'); process.exit(0); }
 
@@ -46,8 +45,7 @@ console.log(`${rows.length} exercises to patch\n`);
 
 let patched = 0, missed = 0;
 for (const row of rows) {
-  const key = ((row.payload?.artist || '') + '|' + (row.payload?.title || '')).toLowerCase();
-  const year = yearMap.get(key);
+  const year = yearById.get(row.song_id);
   if (!year) { missed++; continue; }
   const { error: ue } = await db.from('exercises')
     .update({ payload: Object.assign({}, row.payload, { year }) })
@@ -56,4 +54,4 @@ for (const row of rows) {
   else patched++;
 }
 
-console.log(`Done. ${patched} patched, ${missed} not matched.`);
+console.log(`Done. ${patched} patched, ${missed} no year in songs table.`);

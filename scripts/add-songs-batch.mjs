@@ -74,6 +74,24 @@ async function mx(method, params) {
   return j.message.body;
 }
 
+const MB_UA = 'EnglishBenz/1.0 (benitozaccone@intuendi.com)';
+async function mbYear(artist, title) {
+  try {
+    const q = `recording:"${title}" AND artist:"${artist}"`;
+    const res = await fetch(`https://musicbrainz.org/ws/2/recording?query=${encodeURIComponent(q)}&fmt=json&limit=5`, { headers: { 'User-Agent': MB_UA } });
+    if (!res.ok) return null;
+    const j = await res.json();
+    const clean = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const target = clean(title);
+    const recs = (j.recordings || []);
+    const pool = recs.filter(r => clean(r.title || '').includes(target) || target.includes(clean(r.title || '')));
+    const years = (pool.length ? pool : recs)
+      .map(r => r['first-release-date']).filter(Boolean)
+      .map(d => parseInt(d.slice(0, 4), 10)).filter(y => y > 1900 && y <= new Date().getFullYear());
+    return years.length ? Math.min(...years) : null;
+  } catch { return null; }
+}
+
 function normalizeForMatch(s) {
   return s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 }
@@ -216,10 +234,13 @@ async function addSong({ artist, title }) {
 
   const tsIndex = await fetchTimestampIndex(track.track_id, { artist: track.artist_name, title: track.track_name, duration: track.track_length });
 
+  let year = track.first_release_date ? parseInt(String(track.first_release_date).slice(0, 4), 10) || null : null;
+  if (!year) year = await mbYear(track.artist_name, track.track_name);
+
   const { data: song, error: sErr } = await db.from('songs').upsert({
     artist: track.artist_name, title: track.track_name,
     album: track.album_name || null,
-    year: track.first_release_date ? parseInt(String(track.first_release_date).slice(0, 4), 10) || null : null,
+    year: year || null,
     spotify_url: track.track_spotify_id ? 'https://open.spotify.com/track/' + track.track_spotify_id : null,
     musixmatch_track_id: track.track_id, copyright_notice: notice || null,
     license: 'musixmatch', active: true,
@@ -233,6 +254,7 @@ async function addSong({ artist, title }) {
       payload: { artist: track.artist_name, title: track.track_name, album: track.album_name || '',
         spotify_url: track.track_spotify_id ? 'https://open.spotify.com/track/' + track.track_spotify_id : '',
         copyright: notice || '', section: c.section, line: c.line, context: c.context || '',
+        ...(year ? { year } : {}),
         ...(startMs != null ? { start_ms: startMs } : {}) },
       content_hash: sha256('lyrics:' + track.artist_name + ':' + track.track_name + ':' + c.line),
     };
