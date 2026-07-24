@@ -46,7 +46,7 @@ create index if not exists source_documents_kind_idx
 -- ---------------------------------------------------------------------------
 create table if not exists public.exercises (
   id            uuid primary key default gen_random_uuid(),
-  type          text not null check (type in ('translation', 'audio')),
+  type          text not null check (type in ('translation', 'audio', 'lyrics')),
   level         text not null default '',            -- 'B2' | 'C1' | 'C2' | '' (audio)
   topic         text,
   source        text,
@@ -62,6 +62,45 @@ create index if not exists exercises_type_level_idx
 -- Provenance. Added after the first release, hence "if not exists".
 alter table public.exercises
   add column if not exists source_document_id uuid references public.source_documents (id) on delete set null;
+
+-- ---------------------------------------------------------------------------
+-- Songs
+--
+-- The "Fill the lyrics" game needs the artist, title and album on screen: the
+-- prompt IS the memory cue, so a line without its song is unanswerable. Songs
+-- are their own table rather than fields repeated on every line, because one
+-- song yields many lines and its metadata is written once.
+--
+-- "license" records how each song may be used — 'public-domain', 'cc-by',
+-- 'licensed', 'own'. Lyrics are whole works rather than excerpts, so knowing the
+-- provenance of a row matters more here than anywhere else in the schema.
+--
+-- "spotify_url" is optional; the app falls back to a search link built from the
+-- artist and title, so the listen link works for songs that were never tagged.
+-- ---------------------------------------------------------------------------
+create table if not exists public.songs (
+  id                 uuid primary key default gen_random_uuid(),
+  artist             text not null,
+  title              text not null,
+  album              text,
+  year               integer,
+  license            text not null default 'unspecified',
+  spotify_url        text,
+  source_document_id uuid references public.source_documents (id) on delete set null,
+  active             boolean not null default true,
+  created_at         timestamptz not null default now(),
+  unique (artist, title)
+);
+
+create index if not exists songs_artist_idx on public.songs (artist) where active;
+
+-- Lyric lines live in `exercises` (type 'lyrics') so the game inherits
+-- least-seen-first scheduling, the failure-weighted reordering, the retry list
+-- and per-user progress without a line of new logic.
+alter table public.exercises
+  add column if not exists song_id uuid references public.songs (id) on delete cascade;
+
+create index if not exists exercises_song_idx on public.exercises (song_id);
 
 -- ---------------------------------------------------------------------------
 -- Phrasal verbs
@@ -198,6 +237,11 @@ alter table public.audio_clips           enable row level security;
 
 drop policy if exists audio_clips_read on public.audio_clips;
 create policy audio_clips_read on public.audio_clips
+  for select to authenticated using (true);
+
+alter table public.songs enable row level security;
+drop policy if exists songs_read on public.songs;
+create policy songs_read on public.songs
   for select to authenticated using (true);
 
 -- The mp3s themselves live in the "clips" storage bucket, which is PRIVATE.

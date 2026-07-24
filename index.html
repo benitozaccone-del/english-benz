@@ -198,6 +198,8 @@
   .hint-btn:hover:not(:disabled){color:#0A0A0A; border-color:#0A0A0A;}
   .hint-btn:disabled{opacity:.4; cursor:default;}
   .voice-note{font-family:'Instrument Sans',sans-serif; font-size:11px; color:#5A5A5A; margin-left:auto;}
+  .wait-note{display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+    font-family:'Instrument Sans',sans-serif; font-size:13px; color:#5A5A5A; margin:0.2rem 0 0.4rem;}
   .feedback{font-size:14px; font-weight:600; margin:1rem 0 0; min-height:20px;}
   .bonus{margin-top:1rem; padding:0.9rem 1.1rem; background:#E5D6FF; border-radius:18px; border:1.5px solid #0A0A0A; font-family:'Bricolage Grotesque',sans-serif; font-size:14px; color:#0A0A0A; font-style:italic;}
 
@@ -434,7 +436,7 @@
     <p class="feedback" id="pv-feedback"></p>
     <div class="bonus" id="pv-bonus" style="display:none;"></div>
   </div>
-  <div class="actions"><button class="reset" id="pv-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="pv-end">End session</button><button class="next" id="pv-next">Next question</button></div></div>
+  <div class="actions"><button class="reset" id="pv-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="pv-end">End game</button><button class="next" id="pv-next">Next question</button></div></div>
 </div>
 
 <div id="view-tr" style="display:none;">
@@ -443,7 +445,7 @@
   <div class="dots" id="tr-dots"></div>
   <p class="weak" id="tr-weakspots"></p>
   <div id="tr-body"><div class="loading" id="tr-loading">Fetching a sentence from today's news…</div></div>
-  <div class="actions"><button class="reset" id="tr-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="tr-end">End session</button><button class="next" id="tr-next">Next sentence</button></div></div>
+  <div class="actions"><button class="reset" id="tr-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="tr-end">End game</button><button class="next" id="tr-next">Next question</button></div></div>
 </div>
 
 <div id="view-stats" style="display:none;">
@@ -459,7 +461,7 @@
   <div class="dots" id="audio-dots"></div>
   <p class="weak" id="audio-note"></p>
   <div id="audio-body"><div class="loading">Fetching a sentence from today's news…</div></div>
-  <div class="actions"><button class="reset" id="audio-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="audio-end">End session</button><button class="next" id="audio-next">Next clip</button></div></div>
+  <div class="actions"><button class="reset" id="audio-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="audio-end">End game</button><button class="next" id="audio-next">Next question</button></div></div>
 </div>
 
 </div>
@@ -1031,7 +1033,7 @@ function trRender(q){
       fb.style.color = ok ? '#0B7A5B' : '#C22C46';
       document.getElementById('tr-score').textContent = 'Score: ' + trScore;
       document.getElementById('tr-next').style.display = 'inline-block';
-      document.getElementById('tr-next').textContent = 'Next sentence';
+      document.getElementById('tr-next').textContent = 'Next question';
       trShowWeak();
     };
     el.appendChild(btn);
@@ -1060,12 +1062,13 @@ var audioResults = [];   // this session's run, oldest first
 var AUDIO_PREFILL = 0.15;                 // share of words shown as anchors in advanced
 function audioStatsKey(){ return audioLevel === 'advanced' ? AUDIO_STATS_KEY + '-advanced' : AUDIO_STATS_KEY; }
 
-function speakText(text){
+function speakText(text, onEnd){
   if(!('speechSynthesis' in window)) return false;
   window.speechSynthesis.cancel();
   var utter = new SpeechSynthesisUtterance(text);
   utter.rate = 0.95;
   utter.lang = 'en-US';
+  if(onEnd){ utter.onend = onEnd; utter.onerror = onEnd; }
   window.speechSynthesis.speak(utter);
   return true;
 }
@@ -1074,19 +1077,20 @@ function speakText(text){
    no clip yet, or when playback fails (offline, autoplay policy, bad URL).
    One reused <audio> element, so starting a new clip stops the previous one. */
 var audioPlayer = null;
-function playClip(q){
+function playClip(q, onEnd){
   if(q && q._clip){
     try {
       if(!audioPlayer) audioPlayer = new Audio();
       if('speechSynthesis' in window) window.speechSynthesis.cancel();
+      audioPlayer.onended = onEnd || null;
       audioPlayer.src = q._clip;
       audioPlayer.currentTime = 0;
       var p = audioPlayer.play();
-      if(p && p.catch) p.catch(function(){ speakText(q.correct_sentence); });
+      if(p && p.catch) p.catch(function(){ speakText(q.correct_sentence, onEnd); });
       return 'clip';
     } catch(e){ /* fall through to the browser voice */ }
   }
-  return speakText(q.correct_sentence) ? 'tts' : 'none';
+  return speakText(q.correct_sentence, onEnd) ? 'tts' : 'none';
 }
 function audioCanPlay(q){ return !!(q && q._clip) || ('speechSynthesis' in window); }
 /* Leaving the view must silence both sources, not just the browser voice. */
@@ -1182,6 +1186,29 @@ async function audioLoad(){
   audioRender(q);
 }
 
+/* ---------- holding the options back in the basic level ---------- */
+var AUDIO_OPTIONS_DELAY = 900;     // ms after the clip ends, so it does not snap
+var AUDIO_OPTIONS_CEILING = 15000; // ms absolute, in case no end event ever fires
+var audioRevealTimer = null, audioCeilingTimer = null;
+
+function audioShowOptions(){
+  clearTimeout(audioRevealTimer); clearTimeout(audioCeilingTimer);
+  var opts = document.getElementById('audio-options');
+  var wait = document.getElementById('audio-wait');
+  if(opts) opts.style.display = '';
+  if(wait) wait.style.display = 'none';
+}
+function audioScheduleOptions(){
+  clearTimeout(audioRevealTimer);
+  audioRevealTimer = setTimeout(audioShowOptions, AUDIO_OPTIONS_DELAY);
+}
+function audioGateOptions(){
+  clearTimeout(audioRevealTimer); clearTimeout(audioCeilingTimer);
+  var btn = document.getElementById('audio-show-now');
+  if(btn) btn.onclick = audioShowOptions;
+  audioCeilingTimer = setTimeout(audioShowOptions, AUDIO_OPTIONS_CEILING);
+}
+
 /* Shared scoring tail for both levels. */
 async function audioScoreAnswer(q, ok){
   if(ok) audioScore++;
@@ -1192,7 +1219,7 @@ async function audioScoreAnswer(q, ok){
   if(q._id) ebRecord(q._id, ok);
   document.getElementById('audio-score').textContent = 'Score: ' + audioScore;
   document.getElementById('audio-next').style.display = 'inline-block';
-  document.getElementById('audio-next').textContent = 'Next clip';
+  document.getElementById('audio-next').textContent = 'Next question';
   audioUpdateNote();
 }
 
@@ -1218,17 +1245,35 @@ function audioRender(q){
           '<button class="next" id="audio-check" style="display:inline-flex;">Check answer</button>' +
           '<button class="hint-btn" id="audio-reveal">Reveal a word</button>' +
         '</div>'
-      : '<div class="options" id="audio-options"></div>') +
+      : '<div class="wait-note" id="audio-wait">Listening… the options appear when the clip ends.' +
+          '<button class="hint-btn" id="audio-show-now">Show now</button></div>' +
+        '<div class="options" id="audio-options" style="display:none;"></div>') +
     '<p class="feedback" id="audio-feedback"></p></div>';
 
-  if(playable){
-    document.getElementById('audio-play').onclick = function(){ playClip(q); };
-    playClip(q);
-  }
   document.getElementById('audio-score').textContent = 'Score: ' + audioScore;
 
-  if(audioLevel === 'advanced') audioRenderDictation(q);
-  else audioRenderChoices(q);
+  if(audioLevel === 'advanced'){
+    if(playable){
+      document.getElementById('audio-play').onclick = function(){ playClip(q); };
+      playClip(q);
+    }
+    audioRenderDictation(q);
+    return;
+  }
+
+  audioRenderChoices(q);
+  /* Hold the written options back until the clip has finished. Showing them at
+     once turns the exercise into matching three strings against a half-heard
+     sound; the skill being practised is getting the sentence out of the audio.
+     "Show now" keeps it a nudge rather than a wall, and a hard ceiling means a
+     clip that never fires an end event cannot strand the question. */
+  if(playable){
+    audioGateOptions();
+    document.getElementById('audio-play').onclick = function(){ playClip(q); };
+    playClip(q, audioScheduleOptions);
+  } else {
+    audioShowOptions();   // nothing to listen to; do not make them wait for it
+  }
 }
 
 function audioRenderChoices(q){
