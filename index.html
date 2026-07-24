@@ -1719,9 +1719,11 @@ function lyricsRender(q){
     lyricsLoad();
   };
 
-  document.getElementById('lyrics-next').style.display = 'inline-block';
-  document.getElementById('lyrics-next').onclick = async function(){
-    if(!graded){ await grade(); return; }
+  var nextBtn = document.getElementById('lyrics-next');
+  nextBtn.textContent = 'Check';
+  nextBtn.style.display = 'inline-block';
+  nextBtn.onclick = async function(){
+    if(!graded){ await grade(); nextBtn.textContent = 'Next question'; return; }
     lyricsLoad();
   };
 
