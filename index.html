@@ -1584,6 +1584,13 @@ async function lyricsTopUp(){
 
 async function lyricsLoad(){
   document.getElementById('lyrics-next').style.display = 'none';
+  // Restore an exercise that was interrupted by leaving the app (e.g. opening Spotify).
+  // iOS evicts the Safari tab from memory when switching to another app, so returning
+  // triggers a full page reload. The pending key is cleared once the exercise completes.
+  try {
+    var saved = localStorage.getItem('lyrics-pending');
+    if(saved){ lyricsRender(JSON.parse(saved)); return; }
+  } catch(e){}
   var q = lyricsQueue.shift();
   if(lyricsQueue.length < 1) lyricsTopUp();
   if(!q){
@@ -1601,12 +1608,16 @@ async function lyricsLoad(){
   lyricsRender(q);
 }
 
+function lyricsSavePending(q){ try{ localStorage.setItem('lyrics-pending', JSON.stringify(q)); }catch(e){} }
+function lyricsClearPending(){ try{ localStorage.removeItem('lyrics-pending'); }catch(e){} }
+
 function lyricsRender(q){
   lyricsTotal++;
   document.getElementById('lyrics-round').textContent = 'Question ' + lyricsTotal;
   document.getElementById('lyrics-score').textContent = 'Score: ' + lyricsScore;
   renderDots('lyrics-dots', lyricsResults);
 
+  lyricsSavePending(q);
   var meta = (q.album ? q.album : '') + (q.year ? (q.album ? ' \u00b7 ' : '') + q.year : '');
   // Naming the section is a real hint \u2014 a chorus is far easier to recall than a
   // third verse, and knowing which you are being asked for is part of the cue.
@@ -1713,8 +1724,7 @@ function lyricsRender(q){
   }
 
   document.getElementById('lyrics-skip').onclick = function(){
-    // Not knowing the song is not the same as getting it wrong, so a skip
-    // records nothing and simply moves on.
+    lyricsClearPending();
     graded = true;
     lyricsLoad();
   };
@@ -1724,6 +1734,7 @@ function lyricsRender(q){
   nextBtn.style.display = 'inline-block';
   nextBtn.onclick = async function(){
     if(!graded){ await grade(); nextBtn.textContent = 'Next question'; return; }
+    lyricsClearPending();
     lyricsLoad();
   };
 
