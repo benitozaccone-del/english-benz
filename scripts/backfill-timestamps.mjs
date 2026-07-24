@@ -22,7 +22,7 @@ try {
 
 const { SUPABASE_URL, SUPABASE_SERVICE_KEY, MUSIXMATCH_KEY } = process.env;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) { console.error('Missing SUPABASE_URL / SUPABASE_SERVICE_KEY'); process.exit(1); }
-if (!MUSIXMATCH_KEY) { console.error('Missing MUSIXMATCH_KEY'); process.exit(1); }
+if (!MUSIXMATCH_KEY) { console.warn('MUSIXMATCH_KEY not set — will use LRClib only (free, no key required)'); }
 
 const argv = process.argv.slice(2);
 const flag = (n, d) => { const i = argv.indexOf('--' + n); return i >= 0 && argv[i+1] ? argv[i+1] : d; };
@@ -49,36 +49,61 @@ function normalizeForMatch(s) {
   return s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 }
 
-async function fetchTimestampIndex(trackId) {
-  try {
-    const b = await mx('track.richsync.get', { track_id: trackId });
-    const raw = b?.richsync?.richsync_body;
-    if (raw) {
-      const items = JSON.parse(raw);
-      const map = new Map();
-      for (const it of items) {
-        const k = normalizeForMatch(it.x || '');
-        if (k) map.set(k, Math.round(it.ts * 1000));
+async function fetchTimestampIndex(trackId, meta) {
+  if (MUSIXMATCH_KEY) {
+    try {
+      const b = await mx('track.richsync.get', { track_id: trackId });
+      const raw = b?.richsync?.richsync_body;
+      if (raw) {
+        const items = JSON.parse(raw);
+        const map = new Map();
+        for (const it of items) {
+          const k = normalizeForMatch(it.x || '');
+          if (k) map.set(k, Math.round(it.ts * 1000));
+        }
+        if (map.size) return map;
       }
-      if (map.size) return map;
-    }
-  } catch (e) { if (/401|402/.test(e.message)) throw e; }
-  try {
-    const b = await mx('track.subtitle.get', { track_id: trackId, subtitle_format: 'lrc' });
-    const raw = b?.subtitle?.subtitle_body;
-    if (raw) {
-      const map = new Map();
-      for (const line of raw.split('\n')) {
-        const m = line.match(/^\[(\d+):(\d+\.\d+)\](.*)/);
-        if (m) {
-          const ms = (parseInt(m[1], 10) * 60 + parseFloat(m[2])) * 1000;
-          const k = normalizeForMatch(m[3]);
-          if (k) map.set(k, Math.round(ms));
+    } catch (e) { if (/401|402/.test(e.message)) throw e; }
+    try {
+      const b = await mx('track.subtitle.get', { track_id: trackId, subtitle_format: 'lrc' });
+      const raw = b?.subtitle?.subtitle_body;
+      if (raw) {
+        const map = new Map();
+        for (const line of raw.split('\n')) {
+          const m = line.match(/^\[(\d+):(\d+\.\d+)\](.*)/);
+          if (m) {
+            const ms = (parseInt(m[1], 10) * 60 + parseFloat(m[2])) * 1000;
+            const k = normalizeForMatch(m[3]);
+            if (k) map.set(k, Math.round(ms));
+          }
+        }
+        if (map.size) return map;
+      }
+    } catch (e) { if (/401|402/.test(e.message)) throw e; }
+  }
+  // LRClib: free community LRC database, no key required
+  if (meta && meta.artist && meta.title) {
+    try {
+      const params = new URLSearchParams({ artist_name: meta.artist, track_name: meta.title });
+      const res = await fetch('https://lrclib.net/api/get?' + params);
+      if (res.ok) {
+        const j = await res.json();
+        const raw = j.syncedLyrics;
+        if (raw) {
+          const map = new Map();
+          for (const line of raw.split('\n')) {
+            const m = line.match(/^\[(\d+):(\d+\.\d+)\](.*)/);
+            if (m) {
+              const ms = (parseInt(m[1], 10) * 60 + parseFloat(m[2])) * 1000;
+              const k = normalizeForMatch(m[3]);
+              if (k) map.set(k, Math.round(ms));
+            }
+          }
+          if (map.size) return map;
         }
       }
-      if (map.size) return map;
-    }
-  } catch (e) { if (/401|402/.test(e.message)) throw e; }
+    } catch (e) { /* LRClib unavailable */ }
+  }
   return null;
 }
 
@@ -121,8 +146,9 @@ for (const [trackId, exercises] of byTrack) {
   tracksDone++;
   process.stdout.write(`[${tracksDone}/${byTrack.size}] track ${trackId} (${exercises.length} ex) … `);
   let index;
+  const exMeta = exercises[0]?.payload;
   try {
-    index = await fetchTimestampIndex(trackId);
+    index = await fetchTimestampIndex(trackId, { artist: exMeta?.artist, title: exMeta?.title });
   } catch (e) {
     console.log(`ERROR: ${e.message}`);
     failed += exercises.length;

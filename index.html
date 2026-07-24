@@ -90,10 +90,17 @@
   .lyrics-artist-title{font-family:'Bricolage Grotesque',sans-serif; font-weight:600; font-size:18px; margin:0 0 4px; letter-spacing:-0.02em;}
   .lyrics-artist-search{width:100%; box-sizing:border-box; padding:12px 14px; font-family:'Instrument Sans',sans-serif; font-size:15px; border:1.5px solid #0A0A0A; border-radius:12px; outline:none; background:#FFFFFF; color:#0A0A0A;}
   .lyrics-artist-search:focus{border-color:var(--line,#26314A); box-shadow:0 0 0 3px rgba(198,244,98,.35);}
-  .lyrics-artist-results{display:flex; flex-direction:column; gap:6px; max-height:52vh; overflow-y:auto;}
+  .lyrics-artist-scroll-wrap{position:relative;}
+  .lyrics-artist-scroll-wrap::after{content:''; pointer-events:none; position:absolute; bottom:0; left:0; right:0; height:44px; background:linear-gradient(to bottom,rgba(250,250,247,0),#FAFAF7); border-radius:0 0 12px 12px;}
+  .lyrics-artist-results{display:flex; flex-direction:column; gap:6px; max-height:44vh; overflow-y:auto; padding-bottom:16px;}
   .lyrics-artist-btn{background:#FFFFFF; border:1.5px solid #0A0A0A; border-radius:12px; padding:11px 14px; font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:14px; color:#0A0A0A; text-align:left; cursor:pointer; flex-shrink:0;}
   .lyrics-artist-btn:hover{background:#0A0A0A; color:#FAFAF7;}
   .lyrics-artist-empty{font-family:'Instrument Sans',sans-serif; font-size:14px; color:#8A8A8A; padding:8px 2px;}
+  .lyrics-era-section{margin-top:18px; padding-top:14px; border-top:1px solid rgba(10,10,10,.1);}
+  .lyrics-era-label{font-family:'Instrument Sans',sans-serif; font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:#6A6A6A; margin:0 0 10px;}
+  .lyrics-era-chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .lyrics-era-chip{background:#0A0A0A; color:#C6F462; border:none; border-radius:999px; padding:7px 18px; font-family:'Instrument Sans',sans-serif; font-weight:700; font-size:13px; cursor:pointer; transition:opacity .15s; letter-spacing:.01em;}
+  .lyrics-era-chip:hover{opacity:.75;}
   .menu-btn .title{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif; font-weight:600; font-size:19px; line-height:1.15; letter-spacing:-0.02em;}
   .menu-btn .title em{font-style:italic; font-weight:500;}
   .menu-btn .sub{font-size:13px; color:#4A4A4A; margin-top:3px; line-height:1.35;}
@@ -320,7 +327,7 @@
 <div id="view-menu" style="display:none;">
   <div class="eyebrow">English Benz · B2 → C2</div>
   <h1 class="h1">Practice <em>English</em>, one round at a time.</h1>
-  <p class="lede">Three subjects, eight rounds. Real novels, a course book and today's news. Your progress follows you across devices.</p>
+  <p class="lede">Phrasal verbs, translation, listening and song lyrics. Real news, novels and the music you love. Your progress follows you across devices.</p>
   <div class="menu-grid">
     <div class="menu-group" data-group="pv">
       <button class="menu-btn group-btn" data-group-btn="pv" aria-expanded="false">
@@ -434,7 +441,7 @@
         </button>
         <button class="menu-btn variant-btn" data-mode="lyrics-artist">
           <div>
-            <div class="title">By artist</div>
+            <div class="title">By artist or era</div>
             <div class="sub">Choose who you want to practice</div>
           </div>
           <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
@@ -1554,10 +1561,10 @@ document.getElementById('audio-reset').onclick = async function(){ audioStats = 
    blank and the audio is the cue; here most of the line is given and the song
    itself is the cue, so the artist, title and album have to be on screen. */
 var LYRICS_STATS_KEY = 'lyrics-stats';
-var LYRICS_QUEUE_TARGET = 3, LYRICS_BATCH_SIZE = 3;
+var LYRICS_QUEUE_TARGET = 8, LYRICS_BATCH_SIZE = 12;
 var lyricsQueue = [], lyricsQueueLoading = false;
 var lyricsScore = 0, lyricsTotal = 0, lyricsResults = [], lyricsStats = { correct: 0, wrong: 0 };
-var lyricsMode = 'auto', lyricsArtist = null;
+var lyricsMode = 'auto', lyricsArtist = null, lyricsDecade = null;
 
 /* Which words to hide. Blanking is weighted towards longer words: removing "the"
    or "a" tests nothing, and a line pocked with function-word gaps reads as noise
@@ -1628,9 +1635,10 @@ function _spInit(trackId, seekMs){
         if(_spSeekTarget != null){
           var done = false;
           ctrl.addListener('playback_update', function(e){
-            if(!done && !e.data.is_paused){
+            if(!done && e.data.isPaused === false){
               done = true;
-              ctrl.seek(Math.max(0, _spSeekTarget - 2000));
+              var seekTo = Math.max(0, _spSeekTarget - 2000);
+              setTimeout(function(){ ctrl.seek(seekTo); }, 800);
             }
           });
         }
@@ -1657,12 +1665,13 @@ async function lyricsSaveStats(){ try{ await window.storage.set(LYRICS_STATS_KEY
 async function lyricsInit(mode, artist){
   lyricsMode = mode || 'auto';
   lyricsArtist = artist || null;
+  lyricsDecade = null;
   lyricsScore = 0; lyricsTotal = 0; lyricsResults = [];
   lyricsStats = await lyricsLoadStats();
   lyricsQueue = []; lyricsQueueLoading = false;
   showView('view-lyrics');
   lyricsUpdateNote();
-  if(lyricsMode === 'artist' && !lyricsArtist){
+  if(lyricsMode === 'artist' && !lyricsArtist && !lyricsDecade){
     lyricsShowArtistPicker();
   } else {
     lyricsLoad();
@@ -1671,6 +1680,7 @@ async function lyricsInit(mode, artist){
 function lyricsUpdateNote(){
   var el = document.getElementById('lyrics-note');
   if(lyricsMode === 'artist' && lyricsArtist){ el.textContent = lyricsArtist; return; }
+  if(lyricsMode === 'artist' && lyricsDecade){ el.textContent = (lyricsDecade % 100) + 's'; return; }
   var total = (lyricsStats.correct || 0) + (lyricsStats.wrong || 0);
   el.textContent = total
     ? ('Lifetime accuracy: ' + Math.round((lyricsStats.correct / total) * 100) + '% (' + total + ' lines)')
@@ -1679,33 +1689,39 @@ function lyricsUpdateNote(){
 
 async function lyricsShowArtistPicker(){
   var body = document.getElementById('lyrics-body');
-  body.innerHTML = '<div class="loading">Loading artists…</div>';
+  body.innerHTML = '';
+  document.querySelector('#view-lyrics .top').style.display = 'none';
+  document.getElementById('lyrics-dots').style.display = 'none';
+  document.getElementById('lyrics-note').style.display = 'none';
+  document.querySelector('#view-lyrics .actions').style.display = 'none';
   try {
     if(!ebCloud()){ body.innerHTML = '<p class="weak">Sign in to use this mode.</p>'; return; }
-    var r = await ebSB.from('songs').select('artist').order('artist');
+    var r = await ebSB.from('songs').select('artist,year').order('artist');
     if(r.error || !r.data || !r.data.length){ body.innerHTML = '<p class="weak">No artists found.</p>'; return; }
     var artists = Array.from(new Set(r.data.map(function(x){ return x.artist; }).filter(Boolean))).sort();
-
-    document.querySelector('#view-lyrics .actions').style.display = 'none';
-    body.innerHTML =
-      '<div class="lyrics-artist-picker">' +
-        '<p class="lyrics-artist-title">Who do you want to practice?</p>' +
-        '<input class="lyrics-artist-search" id="lyrics-artist-search" type="search" placeholder="Search artists…" autocomplete="off" spellcheck="false">' +
-        '<div class="lyrics-artist-results" id="lyrics-artist-results"></div>' +
-      '</div>';
+    var decadeSet = new Set();
+    r.data.forEach(function(x){ if(x.year) decadeSet.add(Math.floor(x.year / 10) * 10); });
+    var decades = Array.from(decadeSet).sort();
 
     function pickArtist(name){
-      lyricsArtist = name;
+      document.querySelector('#view-lyrics .top').style.display = '';
+      document.getElementById('lyrics-dots').style.display = '';
+      document.getElementById('lyrics-note').style.display = '';
+      lyricsArtist = name; lyricsDecade = null;
       lyricsUpdateNote();
       lyricsLoad();
     }
-
+    function pickDecade(decade){
+      document.querySelector('#view-lyrics .top').style.display = '';
+      document.getElementById('lyrics-dots').style.display = '';
+      document.getElementById('lyrics-note').style.display = '';
+      lyricsDecade = decade; lyricsArtist = null; // decade is the full start year, e.g. 1980
+      lyricsUpdateNote();
+      lyricsLoad();
+    }
     function renderResults(list){
       var el = document.getElementById('lyrics-artist-results');
-      if(!list.length){
-        el.innerHTML = '<p class="lyrics-artist-empty">No artists match.</p>';
-        return;
-      }
+      if(!list.length){ el.innerHTML = '<p class="lyrics-artist-empty">No artists match.</p>'; return; }
       el.innerHTML = list.map(function(a){
         return '<button class="lyrics-artist-btn" data-artist="' + ebEsc(a) + '">' + ebEsc(a) + '</button>';
       }).join('');
@@ -1714,7 +1730,30 @@ async function lyricsShowArtistPicker(){
       });
     }
 
+    var eraHtml = decades.length
+      ? '<div class="lyrics-era-section">' +
+          '<p class="lyrics-era-label">Or pick a decade</p>' +
+          '<div class="lyrics-era-chips">' +
+            decades.map(function(d){
+              return '<button class="lyrics-era-chip" data-decade="' + d + '">' + (d % 100) + 's</button>';
+            }).join('') +
+          '</div>' +
+        '</div>'
+      : '';
+
+    body.innerHTML =
+      '<div class="lyrics-artist-picker">' +
+        '<p class="lyrics-artist-title">Who do you want to practice?</p>' +
+        '<input class="lyrics-artist-search" id="lyrics-artist-search" type="search" placeholder="Search artists…" autocomplete="off" spellcheck="false">' +
+        '<div class="lyrics-artist-scroll-wrap"><div class="lyrics-artist-results" id="lyrics-artist-results"></div></div>' +
+        eraHtml +
+      '</div>';
+
     renderResults(artists);
+
+    body.querySelectorAll('.lyrics-era-chip').forEach(function(btn){
+      btn.onclick = function(){ pickDecade(parseInt(btn.getAttribute('data-decade'), 10)); };
+    });
 
     var input = document.getElementById('lyrics-artist-search');
     input.addEventListener('input', function(){
@@ -1729,7 +1768,7 @@ async function lyricsFetchByArtist(artist, n){
   if(!ebCloud()) return [];
   try {
     var r = await ebSB.from('exercises')
-      .select('id, payload')
+      .select('id, payload, songs(year)')
       .eq('type', 'lyrics')
       .eq('source', artist)
       .limit(Math.min((n || LYRICS_BATCH_SIZE) * 6, 60));
@@ -1738,13 +1777,36 @@ async function lyricsFetchByArtist(artist, n){
     return shuffled.slice(0, n || LYRICS_BATCH_SIZE).map(function(row){
       var q = Object.assign({}, row.payload);
       q._id = row.id;
+      if(row.songs?.year && !q.year) q.year = row.songs.year;
       return q;
     });
   } catch(e){ return []; }
 }
 
+async function lyricsFetchByDecade(decade, n){
+  if(!ebCloud()) return [];
+  var startYear = decade; // full start year, e.g. 1980
+  var endYear = startYear + 9;
+  try {
+    var r = await ebSB.from('exercises')
+      .select('id, payload, songs!inner(year)')
+      .eq('type', 'lyrics')
+      .gte('songs.year', startYear)
+      .lte('songs.year', endYear)
+      .limit(Math.min((n || LYRICS_BATCH_SIZE) * 6, 60));
+    if(r.error || !r.data || !r.data.length) return [];
+    var shuffled = r.data.slice().sort(function(){ return Math.random() - 0.5; });
+    return shuffled.slice(0, n || LYRICS_BATCH_SIZE).map(function(row){
+      var q = Object.assign({}, row.payload);
+      q._id = row.id;
+      if(row.songs?.year && !q.year) q.year = row.songs.year;
+      return q;
+    });
+  } catch(e){ return []; }
+}
 async function lyricsFetchBatch(n){
   if(lyricsMode === 'artist' && lyricsArtist) return lyricsFetchByArtist(lyricsArtist, n);
+  if(lyricsMode === 'artist' && lyricsDecade) return lyricsFetchByDecade(lyricsDecade, n);
   var rows = await ebFetchExercises('lyrics', '', n || LYRICS_BATCH_SIZE);
   return rows || [];
 }
@@ -1753,6 +1815,7 @@ async function lyricsTopUp(){
   lyricsQueueLoading = true;
   try {
     var batch = await lyricsFetchBatch(LYRICS_QUEUE_TARGET - lyricsQueue.length);
+    batch.sort(function(){ return Math.random() - 0.5; });
     lyricsQueue = lyricsQueue.concat(batch).slice(0, LYRICS_QUEUE_TARGET);
   } finally { lyricsQueueLoading = false; }
 }
@@ -1792,6 +1855,9 @@ function lyricsRender(q){
   document.getElementById('lyrics-score').textContent = 'Score: ' + lyricsScore;
   renderDots('lyrics-dots', lyricsResults);
 
+  document.querySelector('#view-lyrics .top').style.display = '';
+  document.getElementById('lyrics-dots').style.display = '';
+  document.getElementById('lyrics-note').style.display = '';
   document.querySelector('#view-lyrics .actions').style.display = '';
   _spDestroy();
   lyricsSavePending(q);
@@ -1802,7 +1868,7 @@ function lyricsRender(q){
   document.getElementById('lyrics-body').innerHTML =
     '<div class="card">' +
       '<div class="card-head"><span class="tag">' + ebEsc(q.artist || '') + '</span>' +
-        (section ? '<span class="voice-note">' + ebEsc(section) + '</span>' : '') + '</div>' +
+        (section || q.start_ms != null ? '<span class="voice-note">' + (section ? ebEsc(section) : '') + (q.start_ms != null ? (section ? ' · ' : '') + (function(ms){ var s=Math.floor(ms/1000); return Math.floor(s/60)+':'+(s%60<10?'0':'')+(s%60); })(q.start_ms) : '') + '</span>' : '') + '</div>' +
       '<div class="song-title">' + ebEsc(q.title || '') + '</div>' +
       (meta ? '<div class="song-meta">' + ebEsc(meta) + '</div>' : '') +
       (trackId

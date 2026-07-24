@@ -78,7 +78,7 @@ function normalizeForMatch(s) {
   return s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
 }
 
-async function fetchTimestampIndex(trackId) {
+async function fetchTimestampIndex(trackId, meta) {
   // richsync: word-level timestamps (commercial endpoint — 402 on free plan is fine)
   try {
     const b = await mx('track.richsync.get', { track_id: trackId });
@@ -110,6 +110,30 @@ async function fetchTimestampIndex(trackId) {
       if (map.size) return map;
     }
   } catch (e) { /* no timestamps available */ }
+  // LRClib: free community LRC database, no key required
+  if (meta && meta.artist && meta.title) {
+    try {
+      const params = new URLSearchParams({ artist_name: meta.artist, track_name: meta.title });
+      if (meta.duration) params.set('duration', String(Math.round(meta.duration)));
+      const res = await fetch('https://lrclib.net/api/get?' + params);
+      if (res.ok) {
+        const j = await res.json();
+        const raw = j.syncedLyrics;
+        if (raw) {
+          const map = new Map();
+          for (const line of raw.split('\n')) {
+            const m = line.match(/^\[(\d+):(\d+\.\d+)\](.*)/);
+            if (m) {
+              const ms = (parseInt(m[1], 10) * 60 + parseFloat(m[2])) * 1000;
+              const k = normalizeForMatch(m[3]);
+              if (k) map.set(k, Math.round(ms));
+            }
+          }
+          if (map.size) return map;
+        }
+      }
+    } catch (e) { /* LRClib unavailable */ }
+  }
   return null;
 }
 
@@ -190,7 +214,7 @@ async function addSong({ artist, title }) {
   const chosen = processTrack(lines);
   if (!chosen.length) return { skipped: 'nothing usable' };
 
-  const tsIndex = await fetchTimestampIndex(track.track_id);
+  const tsIndex = await fetchTimestampIndex(track.track_id, { artist: track.artist_name, title: track.track_name, duration: track.track_length });
 
   const { data: song, error: sErr } = await db.from('songs').upsert({
     artist: track.artist_name, title: track.track_name,
