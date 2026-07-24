@@ -338,7 +338,7 @@ as $$
   where e.type = p_type
     and (p_level = '' or e.level = p_level)
     and e.active
-  order by (coalesce(p.times_seen, 0) - 2 * coalesce(p.wrong_count, 0)) asc, random()
+  order by (coalesce(p.times_seen, 0) - 2 * coalesce(p.wrong_count, 0)) asc, e.created_at desc
   limit greatest(1, least(p_limit, 50));
 $$;
 

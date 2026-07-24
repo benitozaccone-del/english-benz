@@ -1038,6 +1038,8 @@ var trScore = 0, trTotal = 0, trLevel = 'B2';
 var trResults = [];   // this session's run, oldest first
 var trQueues = { B2: [], C1: [], C2: [] };
 var trQueueLoading = { B2: false, C1: false, C2: false };
+var TR_OPTIONS_DELAY = 8000;
+var trOptionsTimer = null;
 var LEVEL_DESC = {
   B2: "clear, moderately complex sentences using common but varied vocabulary and fairly straightforward clause structure",
   C1: "more complex syntax, some idiomatic expressions, and less frequent vocabulary",
@@ -1141,7 +1143,16 @@ async function trLoad(){
   }
 }
 
+function trShowOptions(){
+  clearTimeout(trOptionsTimer); trOptionsTimer = null;
+  var opts = document.getElementById('tr-options');
+  var wait = document.getElementById('tr-wait');
+  if(opts) opts.style.display = '';
+  if(wait) wait.style.display = 'none';
+}
+
 function trRender(q){
+  clearTimeout(trOptionsTimer); trOptionsTimer = null;
   trTotal++;
   document.getElementById('tr-round').textContent = 'Question ' + trTotal;
   renderDots('tr-dots', trResults);
@@ -1150,14 +1161,18 @@ function trRender(q){
   body.innerHTML =
     '<div class="card"><span class="tag">' + q.source + ' \u00b7 ' + q.topic + '</span>' +
     '<p class="sentence quote">\u201c' + q.english_sentence + '\u201d</p>' +
-    '<div class="options" id="tr-options"></div>' +
+    '<div class="wait-note" id="tr-wait">Think about the translation\u2026 options appear in a moment.<button class="hint-btn" id="tr-show-now">Show now</button></div>' +
+    '<div class="options" id="tr-options" style="display:none"></div>' +
     '<p class="feedback" id="tr-feedback"></p></div>';
+  trOptionsTimer = setTimeout(trShowOptions, TR_OPTIONS_DELAY);
+  document.getElementById('tr-show-now').onclick = trShowOptions;
   var el = document.getElementById('tr-options');
   var answered = false;
   opts.forEach(function(opt){
     var btn = document.createElement('button'); btn.className='opt'; btn.textContent=opt;
     btn.onclick = async function(){
       if(answered) return; answered = true;
+      clearTimeout(trOptionsTimer); trOptionsTimer = null;
       var ok = (opt === q.correct_translation);
       if(ok) trScore++;
       trResults.push(ok); renderDots('tr-dots', trResults, false);
