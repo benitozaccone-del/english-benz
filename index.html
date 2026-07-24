@@ -976,8 +976,8 @@ async function pvAnswer(opt, btn){
   pvShowWeak();
 }
 document.getElementById('pv-next').onclick = pvLoad;
-document.getElementById('pv-back').onclick = function(){ showView('view-menu'); };
-document.getElementById('pv-end').onclick = async function(){ await pvSave(); showView('view-menu'); };
+document.getElementById('pv-back').onclick = function(){ ebReturnToMenu(); };
+document.getElementById('pv-end').onclick = async function(){ await pvSave(); ebReturnToMenu(); };
 
 document.getElementById('pv-reset').onclick = async function(){ pvStats={}; await pvSave(); pvShowWeak(); };
 
@@ -1139,8 +1139,8 @@ function trRender(q){
   document.getElementById('tr-score').textContent = 'Score: ' + trScore;
 }
 document.getElementById('tr-next').onclick = trLoad;
-document.getElementById('tr-back').onclick = function(){ showView('view-menu'); };
-document.getElementById('tr-end').onclick = async function(){ await trSave(); showView('view-menu'); };
+document.getElementById('tr-back').onclick = function(){ ebReturnToMenu(); };
+document.getElementById('tr-end').onclick = async function(){ await trSave(); ebReturnToMenu(); };
 document.getElementById('tr-reset').onclick = async function(){ trStats = {topics:{}}; await trSave(); trShowWeak(); };
 
 /* ---------- spot-the-transcription (audio) game ---------- */
@@ -1506,8 +1506,8 @@ function audioRenderDictation(q){
 }
 
 document.getElementById('audio-next').onclick = audioLoad;
-document.getElementById('audio-back').onclick = function(){ stopAudio(); showView('view-menu'); };
-document.getElementById('audio-end').onclick = async function(){ stopAudio(); await audioSaveStats(audioStats); showView('view-menu'); };
+document.getElementById('audio-back').onclick = function(){ stopAudio(); ebReturnToMenu(); };
+document.getElementById('audio-end').onclick = async function(){ stopAudio(); await audioSaveStats(audioStats); ebReturnToMenu(); };
 document.getElementById('audio-reset').onclick = async function(){ audioStats = {correct:0, wrong:0}; await audioSaveStats(audioStats); audioUpdateNote(); };
 
 
@@ -1741,8 +1741,8 @@ function lyricsRender(q){
   if(inputs.length) inputs[0].focus();
 }
 
-document.getElementById('lyrics-back').onclick = function(){ showView('view-menu'); };
-document.getElementById('lyrics-end').onclick = async function(){ await lyricsSaveStats(); showView('view-menu'); };
+document.getElementById('lyrics-back').onclick = function(){ ebReturnToMenu(); };
+document.getElementById('lyrics-end').onclick = async function(){ await lyricsSaveStats(); ebReturnToMenu(); };
 document.getElementById('lyrics-reset').onclick = async function(){
   lyricsStats = { correct: 0, wrong: 0 }; await lyricsSaveStats(); lyricsUpdateNote();
 };
@@ -1884,7 +1884,7 @@ function ebEsc(s){
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 document.getElementById('stats-open').onclick = statsInit;
-document.getElementById('stats-back').onclick = function(){ showView('view-menu'); };
+document.getElementById('stats-back').onclick = function(){ ebReturnToMenu(); };
 
 /* Only these three keep history in `presentations`. Phrasal verbs score entirely
    in the key-value store, so its "Reset my stats" already clears everything it
@@ -1909,17 +1909,22 @@ document.querySelectorAll('.group-btn').forEach(function(btn){
     if(!wasOpen){ group.classList.add('open'); btn.setAttribute('aria-expanded', 'true'); }
   };
 });
+function ebReturnToMenu(){
+  try{ localStorage.removeItem('eb-last-mode'); localStorage.removeItem('lyrics-pending'); }catch(e){}
+  showView('view-menu');
+}
+function ebLaunchMode(mode){
+  try{ localStorage.setItem('eb-last-mode', mode); }catch(e){}
+  if(mode === 'lyrics') lyricsInit();
+  else if(PV_MODES[mode]) pvInit(mode);
+  else if(mode === 'trB2') trInit('B2');
+  else if(mode === 'trC1') trInit('C1');
+  else if(mode === 'trC2') trInit('C2');
+  else if(mode === 'audioBasic') audioInit('basic');
+  else if(mode === 'audioAdvanced') audioInit('advanced');
+}
 document.querySelectorAll('.menu-btn[data-mode]').forEach(function(btn){
-  btn.onclick = function(){
-    var mode = btn.getAttribute('data-mode');
-    if(mode === 'lyrics') lyricsInit();
-    else if(PV_MODES[mode]) pvInit(mode);
-    else if(mode === 'trB2') trInit('B2');
-    else if(mode === 'trC1') trInit('C1');
-    else if(mode === 'trC2') trInit('C2');
-    else if(mode === 'audioBasic') audioInit('basic');
-    else if(mode === 'audioAdvanced') audioInit('advanced');
-  };
+  btn.onclick = function(){ ebLaunchMode(btn.getAttribute('data-mode')); };
 });
 
 /* ---------- authentication ---------- */
@@ -1931,6 +1936,11 @@ function ebRoute(){
   if(ebUser){
     if(so) so.style.display = 'inline-flex';
     showView('view-menu');
+    // Resume the game the user was in before the page reloaded (iOS tab eviction).
+    try{
+      var last = localStorage.getItem('eb-last-mode');
+      if(last) ebLaunchMode(last);
+    }catch(e){}
   } else {
     if(so) so.style.display = 'none';
     showView(ebSB ? 'view-auth' : 'view-menu');   // no Supabase configured -> offline, straight to menu
@@ -2031,7 +2041,7 @@ async function adminGenerate(){
   ));
 }
 document.getElementById('admin-open').onclick = function(){ showView('view-admin'); adminLoadDocs(); };
-document.getElementById('admin-back').onclick = function(){ showView('view-menu'); };
+document.getElementById('admin-back').onclick = function(){ ebReturnToMenu(); };
 document.getElementById('admin-generate').onclick = adminGenerate;
 document.getElementById('admin-news').onclick = async function(){
   adminReport(await adminCall({ mode: 'news' }, 'Searching the web for recent articles… this can take a couple of minutes.'));
