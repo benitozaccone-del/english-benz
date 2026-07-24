@@ -146,6 +146,7 @@
   .spotify-link{font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:13px;
     color:#0A0A0A; text-decoration:none; border-bottom:2px solid #1DB954; padding-bottom:1px; margin-left:auto;}
   .spotify-link:hover{color:#1DB954;}
+  .lyric-context{font-family:'Instrument Sans',sans-serif; font-size:13px; color:#9A9A92; font-style:italic; margin:0 0 0.75rem; line-height:1.4;}
   .lyric-credit{font-family:'Instrument Sans',sans-serif; font-size:11px; color:#7A7A72;
     margin:1rem 0 0; line-height:1.4;}
 
@@ -1523,6 +1524,7 @@ var lyricsScore = 0, lyricsTotal = 0, lyricsResults = [], lyricsStats = { correc
    or "a" tests nothing, and a line pocked with function-word gaps reads as noise
    rather than as a song you are trying to remember. Index 0 is never blanked, so
    the line always opens with something to anchor to. */
+var LYRIC_FILLER = /^(oh|ah|eh|uh|hmm|hm|mm|ooh|oo|yeah|yea|hey|yo|la|na|da|sha|ba|doo|woo|whoa|woah|bah|ha|ay|aye|aah|nah|aw|oh-oh|na-na|la-la|yeah-yeah)$/i;
 function clozeBlankSet(words){
   var n = words.length;
   if(n < 4) return {};
@@ -1530,7 +1532,7 @@ function clozeBlankSet(words){
   var cands = [];
   for(var i = 1; i < n; i++){
     var core = clozeSplitWord(words[i]).core;
-    if(core) cands.push({ i: i, score: core.length + Math.random() * 3 });
+    if(core && !LYRIC_FILLER.test(core)) cands.push({ i: i, score: core.length + Math.random() * 3 });
   }
   cands.sort(function(a, b){ return b.score - a.score; });
   var out = {};
@@ -1616,6 +1618,7 @@ function lyricsRender(q){
         (section ? '<span class="voice-note">' + ebEsc(section) + '</span>' : '') + '</div>' +
       '<div class="song-title">' + ebEsc(q.title || '') + '</div>' +
       (meta ? '<div class="song-meta">' + ebEsc(meta) + '</div>' : '') +
+      (q.context ? '<div class="lyric-context">… ' + ebEsc(q.context) + '</div>' : '') +
       '<div class="dictation" id="lyrics-cloze"></div>' +
       '<div class="dict-actions">' +
         '<button class="hint-btn" id="lyrics-reveal">Reveal a word</button>' +

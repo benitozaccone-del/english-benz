@@ -304,7 +304,7 @@ async function lyricRowsForTrack(track: any, perSong: number) {
 
   const sec = detectSections(lines);
   const taken = new Set<string>();
-  const chosen: { line: string; section: string }[] = [];
+  const chosen: { line: string; section: string; context: string | null }[] = [];
   // 1 opening verse, 2 chorus, the rest from a later verse — weighted to where
   // memory is strongest rather than spread evenly through the song.
   const plan: Array<{ section: string; want: number }> = [
@@ -316,12 +316,17 @@ async function lyricRowsForTrack(track: any, perSong: number) {
     const pool = section === 'chorus' ? sec.chorus : (section === 'verse-1' ? sec.verse1 : sec.verse2);
     for (const line of pickFrom(pool, want, taken)) {
       taken.add(line.toLowerCase());
-      chosen.push({ line, section });
+      const idx = lines.indexOf(line);
+      chosen.push({ line, section, context: idx > 0 ? lines[idx - 1] : null });
     }
   }
   // A song with no detectable structure still yields exercises.
   if (!chosen.length) {
-    for (const line of pickFrom(lines, perSong, taken)) { taken.add(line.toLowerCase()); chosen.push({ line, section: 'line' }); }
+    for (const line of pickFrom(lines, perSong, taken)) {
+      taken.add(line.toLowerCase());
+      const idx = lines.indexOf(line);
+      chosen.push({ line, section: 'line', context: idx > 0 ? lines[idx - 1] : null });
+    }
   }
   if (!chosen.length) return null;
 
@@ -420,7 +425,7 @@ Deno.serve(async (req: Request) => {
             payload: {
               artist: row.artist, title: row.title, album: row.album || '',
               spotify_url: row.spotify_url || '', copyright: row.copyright_notice || '',
-              section: c.section, line: c.line,
+              section: c.section, line: c.line, context: c.context || '',
             },
             content_hash: await sha256('lyrics:' + row.artist + ':' + row.title + ':' + c.line),
           })));
