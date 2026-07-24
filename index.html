@@ -147,6 +147,14 @@
     color:#0A0A0A; text-decoration:none; border-bottom:2px solid #1DB954; padding-bottom:1px; margin-left:auto;}
   .spotify-link:hover{color:#1DB954;}
   .lyric-context{font-family:'Instrument Sans',sans-serif; font-size:13px; color:#9A9A92; font-style:italic; margin:0 0 0.75rem; line-height:1.4;}
+  .sp-wrap{margin:0.75rem 0 1rem; border-radius:14px; overflow:hidden; border:1.5px solid #0A0A0A;}
+  .sp-controls{display:flex; align-items:center; gap:8px; padding:8px 10px; background:#FFF6EE; border-top:1.5px solid #0A0A0A;}
+  .sp-seek{flex:0 0 auto; padding:6px 11px; border-radius:8px; border:1.5px solid #0A0A0A; background:#FFFFFF; font-family:'Instrument Sans',sans-serif; font-size:13px; font-weight:600; color:#0A0A0A; cursor:pointer;}
+  .sp-mid{flex:1; display:flex; flex-direction:column; gap:3px;}
+  .sp-slider{width:100%; height:4px; accent-color:var(--line,#C97A52); cursor:pointer;}
+  .sp-time{font-family:'Instrument Sans',sans-serif; font-size:11px; color:#5A5A5A; text-align:right;}
+  .sp-open-link{display:block; font-family:'Instrument Sans',sans-serif; font-size:11px; color:#5A5A5A; text-align:right; padding:4px 10px 6px; text-decoration:none;}
+  .sp-open-link:hover{color:#1DB954;}
   .lyric-credit{font-family:'Instrument Sans',sans-serif; font-size:11px; color:#7A7A72;
     margin:1rem 0 0; line-height:1.4;}
 
@@ -1540,6 +1548,70 @@ function clozeBlankSet(words){
   return out;
 }
 
+/* ---- Spotify IFrame API ------------------------------------------------
+   Loaded lazily on the first exercise that has a track URL. The API script
+   fires window.onSpotifyIframeApiReady once ready; calls queued before that
+   are flushed at that moment. One controller lives at a time; it is
+   destroyed before the next exercise renders. */
+var _spAPI = null, _spQueue = [], _spCtrl = null, _spPos = 0, _spDur = 0, _spSeeking = false;
+
+window.onSpotifyIframeApiReady = function(IFrameAPI){
+  _spAPI = IFrameAPI;
+  _spQueue.forEach(function(fn){ fn(IFrameAPI); });
+  _spQueue = [];
+};
+
+function _spLoad(fn){
+  if(_spAPI){ fn(_spAPI); return; }
+  _spQueue.push(fn);
+  if(!document.getElementById('sp-api-js')){
+    var s = document.createElement('script');
+    s.id = 'sp-api-js';
+    s.src = 'https://open.spotify.com/embed-podcast/iframe-api/v1';
+    document.head.appendChild(s);
+  }
+}
+
+function _spDestroy(){
+  if(_spCtrl){ try{ _spCtrl.destroy(); }catch(e){} _spCtrl = null; }
+  _spPos = 0; _spDur = 0;
+}
+
+function _spFmtMs(ms){
+  var s = Math.floor(ms / 1000), m = Math.floor(s / 60);
+  return m + ':' + String(s % 60).padStart(2, '0');
+}
+
+function _spTrackId(url){
+  var m = (url || '').match(/spotify\.com\/track\/([A-Za-z0-9]+)/);
+  return m ? m[1] : null;
+}
+
+function _spInit(trackId){
+  _spLoad(function(API){
+    _spDestroy();
+    var wrap = document.getElementById('sp-embed');
+    if(!wrap) return;
+    wrap.innerHTML = '<div id="sp-target"></div>';
+    API.createController(document.getElementById('sp-target'),
+      { uri: 'spotify:track:' + trackId, width: '100%', height: '80' },
+      function(ctrl){
+        _spCtrl = ctrl;
+        ctrl.addListener('playback_update', function(e){
+          _spPos = e.data.position; _spDur = e.data.duration;
+          var sl = document.getElementById('sp-slider');
+          if(sl && !_spSeeking){
+            sl.max = Math.max(1, Math.floor(_spDur / 1000));
+            sl.value = Math.floor(_spPos / 1000);
+          }
+          var tm = document.getElementById('sp-time');
+          if(tm) tm.textContent = _spFmtMs(_spPos) + ' / ' + _spFmtMs(_spDur);
+        });
+      }
+    );
+  });
+}
+
 function lyricsSpotifyUrl(q){
   if(q.spotify_url) return q.spotify_url;
   // Untagged songs still get a working link: search opens the app just as a
@@ -1617,31 +1689,57 @@ function lyricsRender(q){
   document.getElementById('lyrics-score').textContent = 'Score: ' + lyricsScore;
   renderDots('lyrics-dots', lyricsResults);
 
+  _spDestroy();
   lyricsSavePending(q);
   var meta = (q.album ? q.album : '') + (q.year ? (q.album ? ' \u00b7 ' : '') + q.year : '');
-  // Naming the section is a real hint \u2014 a chorus is far easier to recall than a
-  // third verse, and knowing which you are being asked for is part of the cue.
   var SECTION_LABEL = { 'verse-1': 'first verse', 'chorus': 'chorus', 'verse-2': 'later verse', 'line': '' };
   var section = SECTION_LABEL[q.section] || '';
+  var trackId = _spTrackId(q.spotify_url);
   document.getElementById('lyrics-body').innerHTML =
     '<div class="card">' +
       '<div class="card-head"><span class="tag">' + ebEsc(q.artist || '') + '</span>' +
         (section ? '<span class="voice-note">' + ebEsc(section) + '</span>' : '') + '</div>' +
       '<div class="song-title">' + ebEsc(q.title || '') + '</div>' +
       (meta ? '<div class="song-meta">' + ebEsc(meta) + '</div>' : '') +
+      (trackId
+        ? '<div class="sp-wrap">' +
+            '<div id="sp-embed"></div>' +
+            '<div class="sp-controls">' +
+              '<button class="sp-seek" id="sp-back">« 5s</button>' +
+              '<div class="sp-mid">' +
+                '<input class="sp-slider" id="sp-slider" type="range" min="0" max="300" value="0" step="1">' +
+                '<span class="sp-time" id="sp-time">–</span>' +
+              '</div>' +
+              '<button class="sp-seek" id="sp-fwd">5s »</button>' +
+            '</div>' +
+            '<a class="sp-open-link" href="' + ebEsc(lyricsSpotifyUrl(q)) + '" target="_blank" rel="noopener noreferrer">Open in Spotify ↗</a>' +
+          '</div>'
+        : '<p style="margin:0 0 0.75rem;"><a class="spotify-link" href="' + ebEsc(lyricsSpotifyUrl(q)) + '" target="_blank" rel="noopener noreferrer">Listen on Spotify</a></p>') +
       (q.context ? '<div class="lyric-context">… ' + ebEsc(q.context) + '</div>' : '') +
       '<div class="dictation" id="lyrics-cloze"></div>' +
       '<div class="dict-actions">' +
         '<button class="hint-btn" id="lyrics-reveal">Reveal a word</button>' +
         '<button class="hint-btn" id="lyrics-skip">Skip \u2014 I don\u2019t know it</button>' +
-        '<a class="spotify-link" id="lyrics-spotify" target="_blank" rel="noopener noreferrer">Listen on Spotify</a>' +
       '</div>' +
       '<p class="feedback" id="lyrics-feedback"></p>' +
-      // Musixmatch requires its notice to be shown wherever its lyrics appear.
       (q.copyright ? '<p class="lyric-credit">' + ebEsc(q.copyright) + '</p>' : '') +
     '</div>';
 
-  document.getElementById('lyrics-spotify').href = lyricsSpotifyUrl(q);
+  if(trackId){
+    _spInit(trackId);
+    document.getElementById('sp-back').onclick = function(){
+      if(_spCtrl) _spCtrl.seek(Math.max(0, _spPos - 5000));
+    };
+    document.getElementById('sp-fwd').onclick = function(){
+      if(_spCtrl) _spCtrl.seek(_spPos + 5000);
+    };
+    var sl = document.getElementById('sp-slider');
+    sl.addEventListener('input', function(){ _spSeeking = true; });
+    sl.addEventListener('change', function(){
+      if(_spCtrl) _spCtrl.seek(parseInt(sl.value, 10) * 1000);
+      _spSeeking = false;
+    });
+  }
 
   var words = String(q.line || '').split(/\s+/).filter(Boolean);
   var blanks = clozeBlankSet(words);
