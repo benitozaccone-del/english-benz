@@ -1611,7 +1611,7 @@ function _spInit(trackId){
       function(ctrl){
         _spCtrl = ctrl;
         ctrl.addListener('playback_update', function(e){
-          _spPos = e.data.position; _spDur = e.data.duration;
+          _spPos = e.data.position / 1000; _spDur = e.data.duration / 1000;
           var sl = document.getElementById('sp-slider');
           if(sl && !_spSeeking){
             sl.max = Math.max(1, Math.floor(_spDur));
@@ -1745,11 +1745,11 @@ function lyricsRender(q){
     _spInit(trackId);
     document.getElementById('sp-back').onclick = function(){
       var pos = parseInt((document.getElementById('sp-slider')||{}).value||0,10);
-      if(_spCtrl) _spCtrl.seek(Math.max(0, pos - 5));
+      if(_spCtrl) _spCtrl.seek(Math.max(0, pos - 5) * 1000);
     };
     document.getElementById('sp-fwd').onclick = function(){
       var pos = parseInt((document.getElementById('sp-slider')||{}).value||0,10);
-      if(_spCtrl) _spCtrl.seek(pos + 5);
+      if(_spCtrl) _spCtrl.seek((pos + 5) * 1000);
     };
     document.getElementById('sp-reload').onclick = function(){
       if(_spCurrentTrackId) _spInit(_spCurrentTrackId);
@@ -1757,7 +1757,7 @@ function lyricsRender(q){
     var sl = document.getElementById('sp-slider');
     sl.addEventListener('input', function(){ _spSeeking = true; });
     sl.addEventListener('change', function(){
-      if(_spCtrl) _spCtrl.seek(parseInt(sl.value, 10));
+      if(_spCtrl) _spCtrl.seek(parseInt(sl.value, 10) * 1000);
       _spSeeking = false;
     });
   }
