@@ -102,6 +102,13 @@ alter table public.exercises
 
 create index if not exists exercises_song_idx on public.exercises (song_id);
 
+-- The type list above only takes effect on a fresh database: "create table if not
+-- exists" skips an existing table, constraint and all. Replace it explicitly so
+-- re-running this file actually widens the allowed types.
+alter table public.exercises drop constraint if exists exercises_type_check;
+alter table public.exercises
+  add constraint exercises_type_check check (type in ('translation', 'audio', 'lyrics'));
+
 -- ---------------------------------------------------------------------------
 -- Phrasal verbs
 --

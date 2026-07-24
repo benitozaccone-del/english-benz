@@ -57,6 +57,7 @@
   .menu-group{display:flex; flex-direction:column; gap:8px;}
   .group-btn[data-group-btn="pv"]{background:linear-gradient(105deg,#C6F462 0%,#A8E85C 100%);}
   .group-btn[data-group-btn="tr"]{background:linear-gradient(105deg,#C9B3FF 0%,#FFB9D8 100%);}
+  .group-btn[data-mode="lyrics"]{background:linear-gradient(105deg,#FFC9B5 0%,#FFE8A3 100%);}
   .group-btn[data-group-btn="listen"]{background:linear-gradient(105deg,#0A0A0A 0%,#26314A 100%); color:#FAFAF7;}
   .group-btn[data-group-btn="listen"] .sub{color:#C3C7D2;}
   .group-btn[data-group-btn="listen"] .icon-circle{background:#C6F462; color:#0A0A0A;}
@@ -135,6 +136,16 @@
   #view-pv{--accent:#C6F462; --accent-2:#A8E85C; --soft:#F3FCE2; --line:#7CA83A;}
   #view-tr{--accent:#C9B3FF; --accent-2:#FFB9D8; --soft:#F7F1FF; --line:#8F6FD0;}
   #view-audio{--accent:#C6F462; --accent-2:#26314A; --soft:#F1F3F8; --line:#26314A;}
+  #view-lyrics{--accent:#FFC9B5; --accent-2:#FFE8A3; --soft:#FFF6EE; --line:#C97A52;}
+
+  /* The song IS the prompt, so its title carries the weight the sentence does
+     elsewhere; the line beneath is the exercise, not the heading. */
+  .song-title{font-family:'Bricolage Grotesque',sans-serif; font-weight:700; font-size:21px;
+    letter-spacing:-0.02em; margin:0.2rem 0 0.1rem;}
+  .song-meta{font-family:'Instrument Sans',sans-serif; font-size:12.5px; color:#5A5A5A; margin:0 0 1rem;}
+  .spotify-link{font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:13px;
+    color:#0A0A0A; text-decoration:none; border-bottom:2px solid #1DB954; padding-bottom:1px; margin-left:auto;}
+  .spotify-link:hover{color:#1DB954;}
 
   .top{display:flex; justify-content:space-between; align-items:center; margin-bottom:0.7rem;}
   .round{font-family:'Instrument Sans',sans-serif; font-size:12px; font-weight:600; letter-spacing:0.03em; color:#0A0A0A; text-transform:uppercase; background:var(--soft,#FFFFFF); padding:5px 12px; border-radius:999px; border:1.5px solid var(--line,#0A0A0A);}
@@ -347,6 +358,18 @@
       </div>
     </div>
 
+    <!-- No chevron and a direct data-mode: this subject has one exercise, so an
+         accordion that expands to a single row would be friction for nothing. -->
+    <div class="menu-group" data-group="lyrics">
+      <button class="menu-btn group-btn" data-mode="lyrics">
+        <div>
+          <div class="title">Fill the lyrics</div>
+          <div class="sub">Name the song, then type the missing words</div>
+        </div>
+        <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+      </button>
+    </div>
+
     <div class="menu-group" data-group="listen">
       <button class="menu-btn group-btn" data-group-btn="listen" aria-expanded="false">
         <div>
@@ -462,6 +485,15 @@
   <p class="weak" id="audio-note"></p>
   <div id="audio-body"><div class="loading">Fetching a sentence from today's news…</div></div>
   <div class="actions"><button class="reset" id="audio-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="audio-end">End game</button><button class="next" id="audio-next">Next question</button></div></div>
+</div>
+
+<div id="view-lyrics" style="display:none;">
+  <button class="back-btn" id="lyrics-back">← Menu</button>
+  <div class="top"><span class="round" id="lyrics-round">Question 1</span><span class="score" id="lyrics-score">Score: 0</span></div>
+  <div class="dots" id="lyrics-dots"></div>
+  <p class="weak" id="lyrics-note"></p>
+  <div id="lyrics-body"><div class="loading">Looking for a song…</div></div>
+  <div class="actions"><button class="reset" id="lyrics-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="lyrics-end">End game</button><button class="next" id="lyrics-next">Next question</button></div></div>
 </div>
 
 </div>
@@ -708,7 +740,7 @@ function renderDots(id, results, showCurrent){
     + (showCurrent === false ? '' : '<i class="now"></i>');
 }
 function showView(id){
-  ['view-auth','view-menu','view-admin','view-pv','view-tr','view-stats','view-audio'].forEach(function(v){ document.getElementById(v).style.display = (v===id) ? 'block' : 'none'; });
+  ['view-auth','view-menu','view-admin','view-pv','view-tr','view-stats','view-audio','view-lyrics'].forEach(function(v){ document.getElementById(v).style.display = (v===id) ? 'block' : 'none'; });
 }
 
 /* ---------- phrasal verbs: offline fallback ----------
@@ -1303,14 +1335,14 @@ function audioRenderChoices(q){
    Most of the sentence is blank; a small share of words is given as anchors so
    you can find your place in what you heard. Punctuation stays outside the
    inputs \u2014 making someone type a closing quote tests nothing. */
-function audioSplitWord(w){
+function clozeSplitWord(w){
   var lead  = (w.match(/^[^A-Za-z0-9]+/) || [''])[0];
   var trail = (w.match(/[^A-Za-z0-9]+$/) || [''])[0];
   var core  = w.slice(lead.length, w.length - trail.length);
   if(!core) return { lead: '', core: '', trail: w };   // token is pure punctuation
   return { lead: lead, core: core, trail: trail };
 }
-function audioNorm(s){ return (s||'').toLowerCase().replace(/[^a-z0-9']/g, ''); }
+function clozeNorm(s){ return (s||'').toLowerCase().replace(/[^a-z0-9']/g, ''); }
 function audioPrefillSet(n){
   // Short sentences get nothing free \u2014 there is too little left to work from.
   var want = n < 4 ? 0 : Math.max(1, Math.min(Math.round(n * AUDIO_PREFILL), n - 1));
@@ -1328,7 +1360,7 @@ function audioRenderDictation(q){
   var inputs = [];
 
   words.forEach(function(w, i){
-    var parts = audioSplitWord(w);
+    var parts = clozeSplitWord(w);
     if(given[i] || !parts.core){
       var span = document.createElement('span');
       span.className = 'dw-given';
@@ -1375,7 +1407,7 @@ function audioRenderDictation(q){
     var right = 0;
     graded.forEach(function(inp){
       var expect = inp.getAttribute('data-expect');
-      var ok = audioNorm(inp.value) === audioNorm(expect);
+      var ok = clozeNorm(inp.value) === clozeNorm(expect);
       inp.classList.add(ok ? 'correct' : 'wrong');
       inp.disabled = true;
       if(ok) right++; else inp.value = expect;   // show what it should have been
@@ -1406,6 +1438,220 @@ document.getElementById('audio-back').onclick = function(){ stopAudio(); showVie
 document.getElementById('audio-end').onclick = async function(){ stopAudio(); await audioSaveStats(audioStats); showView('view-menu'); };
 document.getElementById('audio-reset').onclick = async function(){ audioStats = {correct:0, wrong:0}; await audioSaveStats(audioStats); audioUpdateNote(); };
 
+
+/* ---------- fill the lyrics ----------
+   Mechanically the dictation mode inverted: there the sentence is nearly all
+   blank and the audio is the cue; here most of the line is given and the song
+   itself is the cue, so the artist, title and album have to be on screen. */
+var LYRICS_STATS_KEY = 'lyrics-stats';
+var LYRICS_QUEUE_TARGET = 3, LYRICS_BATCH_SIZE = 3;
+var lyricsQueue = [], lyricsQueueLoading = false;
+var lyricsScore = 0, lyricsTotal = 0, lyricsResults = [], lyricsStats = { correct: 0, wrong: 0 };
+
+/* Which words to hide. Blanking is weighted towards longer words: removing "the"
+   or "a" tests nothing, and a line pocked with function-word gaps reads as noise
+   rather than as a song you are trying to remember. Index 0 is never blanked, so
+   the line always opens with something to anchor to. */
+function clozeBlankSet(words){
+  var n = words.length;
+  if(n < 4) return {};
+  var want = Math.max(1, Math.round(n * (0.25 + Math.random() * 0.10)));   // 25-35%
+  var cands = [];
+  for(var i = 1; i < n; i++){
+    var core = clozeSplitWord(words[i]).core;
+    if(core) cands.push({ i: i, score: core.length + Math.random() * 3 });
+  }
+  cands.sort(function(a, b){ return b.score - a.score; });
+  var out = {};
+  cands.slice(0, want).forEach(function(c){ out[c.i] = true; });
+  return out;
+}
+
+function lyricsSpotifyUrl(q){
+  if(q.spotify_url) return q.spotify_url;
+  // Untagged songs still get a working link: search opens the app just as a
+  // track URL does, it just lands a step earlier.
+  return 'https://open.spotify.com/search/' + encodeURIComponent(((q.artist || '') + ' ' + (q.title || '')).trim());
+}
+
+async function lyricsLoadStats(){
+  try {
+    var res = await window.storage.get(LYRICS_STATS_KEY, false);
+    return res ? JSON.parse(res.value) : { correct: 0, wrong: 0 };
+  } catch(e){ return { correct: 0, wrong: 0 }; }
+}
+async function lyricsSaveStats(){ try{ await window.storage.set(LYRICS_STATS_KEY, JSON.stringify(lyricsStats), false); }catch(e){} }
+
+async function lyricsInit(){
+  lyricsScore = 0; lyricsTotal = 0; lyricsResults = [];
+  lyricsStats = await lyricsLoadStats();
+  showView('view-lyrics');
+  lyricsUpdateNote();
+  lyricsLoad();
+}
+function lyricsUpdateNote(){
+  var total = (lyricsStats.correct || 0) + (lyricsStats.wrong || 0);
+  document.getElementById('lyrics-note').textContent = total
+    ? ('Lifetime accuracy: ' + Math.round((lyricsStats.correct / total) * 100) + '% (' + total + ' lines)')
+    : 'The song is the clue. Recall the line, then fill the gaps.';
+}
+
+async function lyricsFetchBatch(n){
+  var rows = await ebFetchExercises('lyrics', '', n || LYRICS_BATCH_SIZE);
+  return rows || [];
+}
+async function lyricsTopUp(){
+  if(lyricsQueueLoading || lyricsQueue.length >= LYRICS_QUEUE_TARGET) return;
+  lyricsQueueLoading = true;
+  try {
+    var batch = await lyricsFetchBatch(LYRICS_QUEUE_TARGET - lyricsQueue.length);
+    lyricsQueue = lyricsQueue.concat(batch).slice(0, LYRICS_QUEUE_TARGET);
+  } finally { lyricsQueueLoading = false; }
+}
+
+async function lyricsLoad(){
+  document.getElementById('lyrics-next').style.display = 'none';
+  var q = lyricsQueue.shift();
+  if(lyricsQueue.length < 1) lyricsTopUp();
+  if(!q){
+    document.getElementById('lyrics-body').innerHTML = '<div class="loading">Looking for a song\u2026</div>';
+    var batch = await lyricsFetchBatch(LYRICS_BATCH_SIZE);
+    q = batch.shift();
+    lyricsQueue = batch;
+  }
+  if(!q){
+    // An empty pool is the normal state until songs are loaded, so say what to do.
+    document.getElementById('lyrics-body').innerHTML =
+      '<div class="error-box">No songs loaded yet. Add some with <code>scripts/ingest-lyrics.mjs</code> and they will show up here.</div>';
+    return;
+  }
+  lyricsRender(q);
+}
+
+function lyricsRender(q){
+  lyricsTotal++;
+  document.getElementById('lyrics-round').textContent = 'Question ' + lyricsTotal;
+  document.getElementById('lyrics-score').textContent = 'Score: ' + lyricsScore;
+  renderDots('lyrics-dots', lyricsResults);
+
+  var meta = (q.album ? q.album : '') + (q.year ? (q.album ? ' \u00b7 ' : '') + q.year : '');
+  document.getElementById('lyrics-body').innerHTML =
+    '<div class="card">' +
+      '<div class="card-head"><span class="tag">' + ebEsc(q.artist || '') + '</span></div>' +
+      '<div class="song-title">' + ebEsc(q.title || '') + '</div>' +
+      (meta ? '<div class="song-meta">' + ebEsc(meta) + '</div>' : '') +
+      '<div class="dictation" id="lyrics-cloze"></div>' +
+      '<div class="dict-actions">' +
+        '<button class="hint-btn" id="lyrics-reveal">Reveal a word</button>' +
+        '<button class="hint-btn" id="lyrics-skip">Skip \u2014 I don\u2019t know it</button>' +
+        '<a class="spotify-link" id="lyrics-spotify" target="_blank" rel="noopener noreferrer">Listen on Spotify</a>' +
+      '</div>' +
+      '<p class="feedback" id="lyrics-feedback"></p>' +
+    '</div>';
+
+  document.getElementById('lyrics-spotify').href = lyricsSpotifyUrl(q);
+
+  var words = String(q.line || '').split(/\s+/).filter(Boolean);
+  var blanks = clozeBlankSet(words);
+  var host = document.getElementById('lyrics-cloze');
+  var inputs = [];
+
+  words.forEach(function(w, i){
+    var parts = clozeSplitWord(w);
+    if(!blanks[i] || !parts.core){
+      var span = document.createElement('span');
+      span.className = 'dw-given';
+      span.textContent = w;
+      host.appendChild(span);
+    } else {
+      if(parts.lead) host.appendChild(document.createTextNode(parts.lead));
+      var inp = document.createElement('input');
+      inp.className = 'dw'; inp.type = 'text';
+      inp.autocomplete = 'off'; inp.spellcheck = false;
+      inp.setAttribute('aria-label', 'missing word ' + (i + 1));
+      inp.style.width = Math.max(3, parts.core.length + 1) + 'ch';
+      inp.setAttribute('data-expect', parts.core);
+      host.appendChild(inp);
+      inputs.push(inp);
+      if(parts.trail) host.appendChild(document.createTextNode(parts.trail));
+    }
+    host.appendChild(document.createTextNode(' '));
+  });
+
+  var revealed = 0, graded = false;
+  var revealBtn = document.getElementById('lyrics-reveal');
+
+  revealBtn.onclick = function(){
+    var open = inputs.filter(function(i){ return !i.disabled; });
+    if(open.length <= 1){ revealBtn.disabled = true; return; }
+    var pick = open[Math.floor(Math.random() * open.length)];
+    pick.value = pick.getAttribute('data-expect');
+    pick.classList.add('revealed');
+    pick.disabled = true;
+    revealed++;
+    if(open.length - 1 <= 1) revealBtn.disabled = true;
+    revealBtn.textContent = 'Reveal a word (' + revealed + ' used)';
+  };
+  if(inputs.length <= 1) revealBtn.disabled = true;
+
+  /* Grading and advancing share one button. A first press marks the answer and
+     shows the line; the next press moves on. That way pressing Next can never
+     silently discard an answer you had typed, which is what a separate "check"
+     button invites. */
+  async function grade(){
+    if(graded) return;
+    graded = true;
+    var toMark = inputs.filter(function(i){ return !i.classList.contains('revealed'); });
+    var right = 0;
+    toMark.forEach(function(inp){
+      var expect = inp.getAttribute('data-expect');
+      var ok = clozeNorm(inp.value) === clozeNorm(expect);
+      inp.classList.add(ok ? 'correct' : 'wrong');
+      inp.disabled = true;
+      if(ok) right++; else inp.value = expect;
+    });
+    var all = (right === toMark.length && toMark.length > 0);
+    var fb = document.getElementById('lyrics-feedback');
+    var hint = revealed ? ' (' + revealed + ' revealed)' : '';
+    fb.textContent = all
+      ? ('Every word right' + hint + '.')
+      : (right + ' of ' + toMark.length + ' right' + hint + '.');
+    fb.style.color = all ? '#0B7A5B' : '#C22C46';
+    revealBtn.style.display = 'none';
+    document.getElementById('lyrics-skip').style.display = 'none';
+
+    if(all) lyricsScore++;
+    if(all) lyricsStats.correct = (lyricsStats.correct || 0) + 1; else lyricsStats.wrong = (lyricsStats.wrong || 0) + 1;
+    lyricsResults.push(all);
+    renderDots('lyrics-dots', lyricsResults, false);
+    document.getElementById('lyrics-score').textContent = 'Score: ' + lyricsScore;
+    await lyricsSaveStats();
+    await logAttempt('lyrics', all);
+    if(q._id) ebRecord(q._id, all);
+    lyricsUpdateNote();
+  }
+
+  document.getElementById('lyrics-skip').onclick = function(){
+    // Not knowing the song is not the same as getting it wrong, so a skip
+    // records nothing and simply moves on.
+    graded = true;
+    lyricsLoad();
+  };
+
+  document.getElementById('lyrics-next').style.display = 'inline-block';
+  document.getElementById('lyrics-next').onclick = async function(){
+    if(!graded){ await grade(); return; }
+    lyricsLoad();
+  };
+
+  if(inputs.length) inputs[0].focus();
+}
+
+document.getElementById('lyrics-back').onclick = function(){ showView('view-menu'); };
+document.getElementById('lyrics-end').onclick = async function(){ await lyricsSaveStats(); showView('view-menu'); };
+document.getElementById('lyrics-reset').onclick = async function(){
+  lyricsStats = { correct: 0, wrong: 0 }; await lyricsSaveStats(); lyricsUpdateNote();
+};
 
 /* ---------- menu wiring ---------- */
 /* ---------- stats view ---------- */
@@ -1565,7 +1811,8 @@ document.querySelectorAll('.group-btn').forEach(function(btn){
 document.querySelectorAll('.menu-btn[data-mode]').forEach(function(btn){
   btn.onclick = function(){
     var mode = btn.getAttribute('data-mode');
-    if(PV_MODES[mode]) pvInit(mode);
+    if(mode === 'lyrics') lyricsInit();
+    else if(PV_MODES[mode]) pvInit(mode);
     else if(mode === 'trB2') trInit('B2');
     else if(mode === 'trC1') trInit('C1');
     else if(mode === 'trC2') trInit('C2');
