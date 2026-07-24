@@ -146,6 +146,8 @@
   .spotify-link{font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:13px;
     color:#0A0A0A; text-decoration:none; border-bottom:2px solid #1DB954; padding-bottom:1px; margin-left:auto;}
   .spotify-link:hover{color:#1DB954;}
+  .lyric-credit{font-family:'Instrument Sans',sans-serif; font-size:11px; color:#7A7A72;
+    margin:1rem 0 0; line-height:1.4;}
 
   .top{display:flex; justify-content:space-between; align-items:center; margin-bottom:0.7rem;}
   .round{font-family:'Instrument Sans',sans-serif; font-size:12px; font-weight:600; letter-spacing:0.03em; color:#0A0A0A; text-transform:uppercase; background:var(--soft,#FFFFFF); padding:5px 12px; border-radius:999px; border:1.5px solid var(--line,#0A0A0A);}
@@ -429,6 +431,20 @@
       <div class="admin-group-title">From a PDF</div>
       <input id="admin-file" type="file" accept="application/pdf" />
       <button class="auth-primary" id="admin-generate">Generate from PDF</button>
+    </div>
+
+    <div class="admin-group">
+      <div class="admin-group-title">Add a song or album</div>
+      <p class="admin-hint">Looks the lyrics up on Musixmatch and stores a few lines per song — one from the opening verse, two from the chorus, the rest from later on.</p>
+      <input id="admin-song-artist" type="text" placeholder="Artist" autocomplete="off" />
+      <input id="admin-song-title" type="text" placeholder="Song or album title" autocomplete="off" />
+      <label class="admin-label">Add as
+        <select id="admin-song-kind" style="flex:1;">
+          <option value="song">a single song</option>
+          <option value="album">a whole album</option>
+        </select>
+      </label>
+      <button class="auth-primary" id="admin-song-go">Fetch lyrics</button>
     </div>
 
     <div class="admin-group">
@@ -1586,9 +1602,14 @@ function lyricsRender(q){
   renderDots('lyrics-dots', lyricsResults);
 
   var meta = (q.album ? q.album : '') + (q.year ? (q.album ? ' \u00b7 ' : '') + q.year : '');
+  // Naming the section is a real hint \u2014 a chorus is far easier to recall than a
+  // third verse, and knowing which you are being asked for is part of the cue.
+  var SECTION_LABEL = { 'verse-1': 'first verse', 'chorus': 'chorus', 'verse-2': 'later verse', 'line': '' };
+  var section = SECTION_LABEL[q.section] || '';
   document.getElementById('lyrics-body').innerHTML =
     '<div class="card">' +
-      '<div class="card-head"><span class="tag">' + ebEsc(q.artist || '') + '</span></div>' +
+      '<div class="card-head"><span class="tag">' + ebEsc(q.artist || '') + '</span>' +
+        (section ? '<span class="voice-note">' + ebEsc(section) + '</span>' : '') + '</div>' +
       '<div class="song-title">' + ebEsc(q.title || '') + '</div>' +
       (meta ? '<div class="song-meta">' + ebEsc(meta) + '</div>' : '') +
       '<div class="dictation" id="lyrics-cloze"></div>' +
@@ -1598,6 +1619,8 @@ function lyricsRender(q){
         '<a class="spotify-link" id="lyrics-spotify" target="_blank" rel="noopener noreferrer">Listen on Spotify</a>' +
       '</div>' +
       '<p class="feedback" id="lyrics-feedback"></p>' +
+      // Musixmatch requires its notice to be shown wherever its lyrics appear.
+      (q.copyright ? '<p class="lyric-credit">' + ebEsc(q.copyright) + '</p>' : '') +
     '</div>';
 
   document.getElementById('lyrics-spotify').href = lyricsSpotifyUrl(q);
@@ -1997,6 +2020,22 @@ document.getElementById('admin-url-go').onclick = async function(){
   var u = document.getElementById('admin-url').value.trim();
   if(!u){ document.getElementById('admin-log').textContent = 'Paste a URL first.'; return; }
   adminReport(await adminCall({ mode: 'url', url: u }, 'Fetching that page and generating…'));
+};
+document.getElementById('admin-song-go').onclick = async function(){
+  var artist = document.getElementById('admin-song-artist').value.trim();
+  var title = document.getElementById('admin-song-title').value.trim();
+  var kind = document.getElementById('admin-song-kind').value;
+  var log = document.getElementById('admin-log');
+  if(!artist || !title){ log.textContent = 'Give both an artist and a title.'; return; }
+  var data = await adminCall(
+    { mode: kind, artist: artist, title: title },
+    kind === 'album' ? 'Looking up the album…' : 'Looking up the song…'
+  );
+  if(!data) return;
+  var msg = 'Added ' + (data.songs || 0) + ' song' + ((data.songs === 1) ? '' : 's')
+          + ' and ' + (data.lyric_lines || 0) + ' lyric exercise' + ((data.lyric_lines === 1) ? '' : 's') + '.';
+  if(data.errors && data.errors.length) msg += ' Skipped: ' + data.errors.slice(0, 4).join(' | ');
+  log.textContent = msg;
 };
 document.getElementById('admin-book-go').onclick = async function(){
   var id = document.getElementById('admin-books').value;

@@ -102,6 +102,18 @@ alter table public.exercises
 
 create index if not exists exercises_song_idx on public.exercises (song_id);
 
+-- Which part of the song a lyric line came from. Recorded rather than implied so
+-- the card can say "chorus" — which is a real hint, since the chorus is the part
+-- you are most likely to remember.
+alter table public.exercises
+  add column if not exists section text;
+
+-- The notice Musixmatch requires to be shown with its lyrics, kept per song.
+alter table public.songs
+  add column if not exists copyright_notice text;
+alter table public.songs
+  add column if not exists musixmatch_track_id bigint;
+
 -- The type list above only takes effect on a fresh database: "create table if not
 -- exists" skips an existing table, constraint and all. Replace it explicitly so
 -- re-running this file actually widens the allowed types.

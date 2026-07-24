@@ -215,6 +215,128 @@ async function searchNews(want: number): Promise<string> {
   return lines.join('\n');
 }
 
+// ---------------------------------------------------------------------------
+// Musixmatch — lyrics for the "Fill the lyrics" game
+//
+// The key lives here, in the function's secrets, and never reaches the browser:
+// the app is a static page, so anything it holds is public, and this one is
+// billed. Calls from the browser would also be blocked by CORS.
+// ---------------------------------------------------------------------------
+const MX_BASE = 'https://api.musixmatch.com/ws/1.1/';
+
+async function mx(method: string, params: Record<string, string | number>): Promise<any> {
+  const key = Deno.env.get('MUSIXMATCH_API_KEY');
+  if (!key) throw new Error('MUSIXMATCH_API_KEY is not set on this function.');
+  const qs = new URLSearchParams({ ...Object.fromEntries(Object.entries(params).map(([k, v]) => [k, String(v)])), apikey: key });
+  const res = await fetch(MX_BASE + method + '?' + qs.toString(), { signal: AbortSignal.timeout(30000) });
+  if (!res.ok) throw new Error(`Musixmatch HTTP ${res.status}`);
+  const data = await res.json();
+  const status = data?.message?.header?.status_code;
+  // Musixmatch reports failure inside a 200 response, so the HTTP check above is
+  // not enough. 402 is the one worth naming: it means the plan does not cover
+  // what was asked for, which reads as an empty result otherwise.
+  if (status === 401) throw new Error('Musixmatch rejected the API key (401).');
+  if (status === 402) throw new Error('Your Musixmatch plan does not include this (402) — full lyrics need a licensed tier.');
+  if (status === 404) return null;
+  if (status !== 200) throw new Error(`Musixmatch status ${status}`);
+  return data.message.body;
+}
+
+/* The lyric body carries a commercial-use notice and, on preview tiers, a
+   truncation marker. Neither is lyrics: left in, they would become exercises and
+   the notice — which must be displayed — would be treated as a line to fill in. */
+function splitLyricBody(body: string): { lines: string[]; notice: string } {
+  const noticeParts: string[] = [];
+  const lines: string[] = [];
+  for (let raw of String(body || '').split(/\r?\n/)) {
+    const line = raw.replace(/\s+/g, ' ').trim();
+    if (!line) continue;
+    if (/\*{3}|NOT for Commercial use|Restricted|^\.{3}$|^\(\d+\)$/i.test(line)) { noticeParts.push(line.replace(/\*/g, '').trim()); continue; }
+    if (/^[\[(].*[\])]$/.test(line)) continue;          // [Chorus], (instrumental)
+    lines.push(line);
+  }
+  return { lines, notice: noticeParts.join(' ').trim() };
+}
+
+/* Structure without a model call: a chorus is the part that repeats, which is
+   also exactly why it is the part you remember. Lines occurring more than once
+   are chorus lines; the runs of non-repeating lines around them are verses. */
+function detectSections(lines: string[]): { chorus: string[]; verse1: string[]; verse2: string[] } {
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9' ]/g, '').replace(/\s+/g, ' ').trim();
+  const freq = new Map<string, number>();
+  for (const l of lines) freq.set(norm(l), (freq.get(norm(l)) || 0) + 1);
+
+  const runs: { repeated: boolean; lines: string[] }[] = [];
+  for (const l of lines) {
+    const repeated = (freq.get(norm(l)) || 0) >= 2;
+    if (!runs.length || runs[runs.length - 1].repeated !== repeated) runs.push({ repeated, lines: [] });
+    runs[runs.length - 1].lines.push(l);
+  }
+  const chorus = runs.filter((r) => r.repeated).sort((a, b) => b.lines.length - a.lines.length)[0];
+  const verses = runs.filter((r) => !r.repeated && r.lines.length >= 2);
+  return {
+    chorus: chorus ? chorus.lines : [],
+    verse1: verses[0] ? verses[0].lines : [],
+    verse2: verses[1] ? verses[1].lines : (verses[0] ? verses[0].lines.slice(2) : []),
+  };
+}
+
+const lyricWords = (s: string) => s.split(/\s+/).filter(Boolean).length;
+
+/* Prefer the most substantial line in a section: longest wins, which favours a
+   line with something in it over "oh yeah". */
+function pickFrom(section: string[], want: number, taken: Set<string>): string[] {
+  return section
+    .filter((l) => { const n = lyricWords(l); return n >= 5 && n <= 14 && !taken.has(l.toLowerCase()); })
+    .sort((a, b) => lyricWords(b) - lyricWords(a))
+    .slice(0, want);
+}
+
+// One song: fetch, find its structure, return the rows to store.
+async function lyricRowsForTrack(track: any, perSong: number) {
+  const trackId = track.track_id;
+  const body = await mx('track.lyrics.get', { track_id: trackId });
+  const lyricsBody = body?.lyrics?.lyrics_body;
+  if (!lyricsBody) return null;
+
+  const { lines, notice } = splitLyricBody(lyricsBody);
+  if (lines.length < 4) return null;
+
+  const sec = detectSections(lines);
+  const taken = new Set<string>();
+  const chosen: { line: string; section: string }[] = [];
+  // 1 opening verse, 2 chorus, the rest from a later verse — weighted to where
+  // memory is strongest rather than spread evenly through the song.
+  const plan: Array<{ section: string; want: number }> = [
+    { section: 'verse-1', want: 1 },
+    { section: 'chorus', want: 2 },
+    { section: 'verse-2', want: Math.max(1, perSong - 3) },
+  ];
+  for (const { section, want } of plan) {
+    const pool = section === 'chorus' ? sec.chorus : (section === 'verse-1' ? sec.verse1 : sec.verse2);
+    for (const line of pickFrom(pool, want, taken)) {
+      taken.add(line.toLowerCase());
+      chosen.push({ line, section });
+    }
+  }
+  // A song with no detectable structure still yields exercises.
+  if (!chosen.length) {
+    for (const line of pickFrom(lines, perSong, taken)) { taken.add(line.toLowerCase()); chosen.push({ line, section: 'line' }); }
+  }
+  if (!chosen.length) return null;
+
+  return {
+    artist: track.artist_name,
+    title: track.track_name,
+    album: track.album_name || null,
+    year: track.first_release_date ? parseInt(String(track.first_release_date).slice(0, 4), 10) || null : null,
+    spotify_url: track.track_spotify_id ? 'https://open.spotify.com/track/' + track.track_spotify_id : null,
+    musixmatch_track_id: trackId,
+    copyright_notice: notice || null,
+    chosen,
+  };
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS });
   if (req.method !== 'POST') return json({ error: 'POST only' }, 405);
@@ -245,6 +367,77 @@ Deno.serve(async (req: Request) => {
         .limit(50);
       if (error) throw error;
       return json({ documents: data || [] });
+    }
+
+    // ---- add songs from Musixmatch ----------------------------------------
+    if (mode === 'song' || mode === 'album') {
+      const artist = String(body.artist || '').trim();
+      const wanted = String(body.title || body.album || '').trim();
+      const perSong = Math.max(3, Math.min(parseInt(body.per_song, 10) || 4, 6));
+      if (!artist || !wanted) return json({ error: 'Give both an artist and a song or album.' }, 400);
+
+      let tracks: any[] = [];
+      if (mode === 'song') {
+        const found = await mx('track.search', { q_artist: artist, q_track: wanted, page_size: 3, s_track_rating: 'desc' });
+        tracks = (found?.track_list || []).map((t: any) => t.track);
+      } else {
+        // q_album is passed in case the plan honours it, but the result is also
+        // filtered by album name: if the parameter is ignored the search quietly
+        // returns the artist's top tracks instead, which is not the album asked for.
+        const found = await mx('track.search', { q_artist: artist, q_album: wanted, page_size: 100, s_track_rating: 'desc' });
+        const all = (found?.track_list || []).map((t: any) => t.track);
+        const want = wanted.toLowerCase();
+        const onAlbum = all.filter((t: any) => String(t.album_name || '').toLowerCase().includes(want));
+        tracks = onAlbum.length ? onAlbum : [];
+        if (!tracks.length) {
+          return json({ error: `Found no tracks on an album matching "${wanted}" for ${artist}. Check the album name.` }, 404);
+        }
+      }
+      if (!tracks.length) return json({ error: `Nothing found for "${wanted}" by ${artist}.` }, 404);
+
+      let songsAdded = 0, linesAdded = 0;
+      const errors: string[] = [];
+
+      for (const track of tracks.slice(0, mode === 'album' ? 30 : 1)) {
+        try {
+          const row = await lyricRowsForTrack(track, perSong);
+          if (!row) { errors.push(`${track.track_name}: no usable lines`); continue; }
+
+          const { data: song, error: sErr } = await admin
+            .from('songs')
+            .upsert({
+              artist: row.artist, title: row.title, album: row.album, year: row.year,
+              license: 'musixmatch', spotify_url: row.spotify_url,
+              musixmatch_track_id: row.musixmatch_track_id, copyright_notice: row.copyright_notice,
+            }, { onConflict: 'artist,title' })
+            .select('id').single();
+          if (sErr) { errors.push(`${track.track_name}: ${sErr.message}`); continue; }
+
+          // sha256 is async, so the rows have to be awaited together rather than
+          // built inside a plain map — `await` in a non-async callback does not compile.
+          const rows = await Promise.all(row.chosen.map(async (c) => ({
+            type: 'lyrics', level: '', source: row.artist, song_id: song.id, section: c.section,
+            payload: {
+              artist: row.artist, title: row.title, album: row.album || '',
+              spotify_url: row.spotify_url || '', copyright: row.copyright_notice || '',
+              section: c.section, line: c.line,
+            },
+            content_hash: await sha256('lyrics:' + row.artist + ':' + row.title + ':' + c.line),
+          })));
+
+          const { data: ins, error: eErr } = await admin
+            .from('exercises').upsert(rows, { onConflict: 'content_hash', ignoreDuplicates: true }).select('id');
+          if (eErr) { errors.push(`${track.track_name}: ${eErr.message}`); continue; }
+          songsAdded++;
+          linesAdded += ins ? ins.length : 0;
+        } catch (e) {
+          errors.push(`${track.track_name}: ${String((e as Error).message || e)}`);
+          // A key or plan failure hits every remaining track the same way.
+          if (/API key|plan does not include/i.test(String((e as Error).message))) break;
+        }
+      }
+
+      return json({ songs: songsAdded, lyric_lines: linesAdded, tracks_seen: tracks.length, errors });
     }
 
     // ---- obtain the source material ---------------------------------------
