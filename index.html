@@ -86,10 +86,14 @@
   .menu-group[data-group="lyrics"] .menu-sub{border-left-color:#C6F462;}
   .menu-group[data-group="lyrics"] .variant-btn{background:#EEF0F5; border-color:#26314A;}
   .menu-group[data-group="lyrics"] .variant-btn .icon-circle{background:#C6F462; color:#0A0A0A;}
-  .lyrics-artist-grid{display:flex; flex-direction:column; gap:8px;}
-  .lyrics-artist-title{font-family:'Bricolage Grotesque',sans-serif; font-weight:600; font-size:18px; margin:0 0 12px; letter-spacing:-0.02em;}
-  .lyrics-artist-btn{background:#FFFFFF; border:1.5px solid #0A0A0A; border-radius:14px; padding:14px 16px; font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:15px; color:#0A0A0A; text-align:left; cursor:pointer;}
+  .lyrics-artist-picker{display:flex; flex-direction:column; gap:10px;}
+  .lyrics-artist-title{font-family:'Bricolage Grotesque',sans-serif; font-weight:600; font-size:18px; margin:0 0 4px; letter-spacing:-0.02em;}
+  .lyrics-artist-search{width:100%; box-sizing:border-box; padding:12px 14px; font-family:'Instrument Sans',sans-serif; font-size:15px; border:1.5px solid #0A0A0A; border-radius:12px; outline:none; background:#FFFFFF; color:#0A0A0A;}
+  .lyrics-artist-search:focus{border-color:var(--line,#26314A); box-shadow:0 0 0 3px rgba(198,244,98,.35);}
+  .lyrics-artist-results{display:flex; flex-direction:column; gap:6px; max-height:52vh; overflow-y:auto;}
+  .lyrics-artist-btn{background:#FFFFFF; border:1.5px solid #0A0A0A; border-radius:12px; padding:11px 14px; font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:14px; color:#0A0A0A; text-align:left; cursor:pointer; flex-shrink:0;}
   .lyrics-artist-btn:hover{background:#0A0A0A; color:#FAFAF7;}
+  .lyrics-artist-empty{font-family:'Instrument Sans',sans-serif; font-size:14px; color:#8A8A8A; padding:8px 2px;}
   .menu-btn .title{font-family:'Bricolage Grotesque','Instrument Sans',sans-serif; font-weight:600; font-size:19px; line-height:1.15; letter-spacing:-0.02em;}
   .menu-btn .title em{font-style:italic; font-weight:500;}
   .menu-btn .sub{font-size:13px; color:#4A4A4A; margin-top:3px; line-height:1.35;}
@@ -1681,19 +1685,42 @@ async function lyricsShowArtistPicker(){
     var r = await ebSB.from('songs').select('artist').order('artist');
     if(r.error || !r.data || !r.data.length){ body.innerHTML = '<p class="weak">No artists found.</p>'; return; }
     var artists = Array.from(new Set(r.data.map(function(x){ return x.artist; }).filter(Boolean))).sort();
-    body.innerHTML = '<div class="lyrics-artist-grid">' +
-      '<p class="lyrics-artist-title">Who do you want to practice?</p>' +
-      artists.map(function(a){
+
+    body.innerHTML =
+      '<div class="lyrics-artist-picker">' +
+        '<p class="lyrics-artist-title">Who do you want to practice?</p>' +
+        '<input class="lyrics-artist-search" id="lyrics-artist-search" type="search" placeholder="Search artists…" autocomplete="off" spellcheck="false">' +
+        '<div class="lyrics-artist-results" id="lyrics-artist-results"></div>' +
+      '</div>';
+
+    function pickArtist(name){
+      lyricsArtist = name;
+      lyricsUpdateNote();
+      lyricsLoad();
+    }
+
+    function renderResults(list){
+      var el = document.getElementById('lyrics-artist-results');
+      if(!list.length){
+        el.innerHTML = '<p class="lyrics-artist-empty">No artists match.</p>';
+        return;
+      }
+      el.innerHTML = list.map(function(a){
         return '<button class="lyrics-artist-btn" data-artist="' + ebEsc(a) + '">' + ebEsc(a) + '</button>';
-      }).join('') +
-    '</div>';
-    body.querySelectorAll('.lyrics-artist-btn').forEach(function(btn){
-      btn.onclick = function(){
-        lyricsArtist = btn.getAttribute('data-artist');
-        lyricsUpdateNote();
-        lyricsLoad();
-      };
+      }).join('');
+      el.querySelectorAll('.lyrics-artist-btn').forEach(function(btn){
+        btn.onclick = function(){ pickArtist(btn.getAttribute('data-artist')); };
+      });
+    }
+
+    renderResults(artists);
+
+    var input = document.getElementById('lyrics-artist-search');
+    input.addEventListener('input', function(){
+      var q = input.value.trim().toLowerCase();
+      renderResults(q ? artists.filter(function(a){ return a.toLowerCase().includes(q); }) : artists);
     });
+    input.focus();
   } catch(e){ body.innerHTML = '<p class="weak">Could not load artists.</p>'; }
 }
 
