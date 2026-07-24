@@ -74,6 +74,55 @@ async function mx(method, params) {
   return j.message.body;
 }
 
+function normalizeForMatch(s) {
+  return s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+async function fetchTimestampIndex(trackId) {
+  // richsync: word-level timestamps (commercial endpoint — 402 on free plan is fine)
+  try {
+    const b = await mx('track.richsync.get', { track_id: trackId });
+    const raw = b?.richsync?.richsync_body;
+    if (raw) {
+      const items = JSON.parse(raw);
+      const map = new Map();
+      for (const it of items) {
+        const k = normalizeForMatch(it.x || '');
+        if (k) map.set(k, Math.round(it.ts * 1000));
+      }
+      if (map.size) return map;
+    }
+  } catch (e) { /* fall through */ }
+  // subtitle: line-level LRC timestamps (available on lower tiers)
+  try {
+    const b = await mx('track.subtitle.get', { track_id: trackId, subtitle_format: 'lrc' });
+    const raw = b?.subtitle?.subtitle_body;
+    if (raw) {
+      const map = new Map();
+      for (const line of raw.split('\n')) {
+        const m = line.match(/^\[(\d+):(\d+\.\d+)\](.*)/);
+        if (m) {
+          const ms = (parseInt(m[1], 10) * 60 + parseFloat(m[2])) * 1000;
+          const k = normalizeForMatch(m[3]);
+          if (k) map.set(k, Math.round(ms));
+        }
+      }
+      if (map.size) return map;
+    }
+  } catch (e) { /* no timestamps available */ }
+  return null;
+}
+
+function findTimestamp(index, line) {
+  if (!index) return null;
+  const key = normalizeForMatch(line);
+  if (index.has(key)) return index.get(key);
+  for (const [k, ms] of index) {
+    if (k.includes(key) || key.includes(k)) return ms;
+  }
+  return null;
+}
+
 function splitLyricBody(body) {
   const lines = body.split('\n').map(l => l.trim()).filter(l => l &&
     !l.startsWith('****') && !/NOT for Commercial use/i.test(l) &&
@@ -141,6 +190,8 @@ async function addSong({ artist, title }) {
   const chosen = processTrack(lines);
   if (!chosen.length) return { skipped: 'nothing usable' };
 
+  const tsIndex = await fetchTimestampIndex(track.track_id);
+
   const { data: song, error: sErr } = await db.from('songs').upsert({
     artist: track.artist_name, title: track.track_name,
     album: track.album_name || null,
@@ -151,13 +202,17 @@ async function addSong({ artist, title }) {
   }, { onConflict: 'artist,title' }).select('id').single();
   if (sErr) throw new Error(sErr.message);
 
-  const exerciseRows = chosen.map(c => ({
-    type: 'lyrics', level: '', source: track.artist_name, song_id: song.id, section: c.section,
-    payload: { artist: track.artist_name, title: track.track_name, album: track.album_name || '',
-      spotify_url: track.track_spotify_id ? 'https://open.spotify.com/track/' + track.track_spotify_id : '',
-      copyright: notice || '', section: c.section, line: c.line, context: c.context || '' },
-    content_hash: sha256('lyrics:' + track.artist_name + ':' + track.track_name + ':' + c.line),
-  }));
+  const exerciseRows = chosen.map(c => {
+    const startMs = findTimestamp(tsIndex, c.line);
+    return {
+      type: 'lyrics', level: '', source: track.artist_name, song_id: song.id, section: c.section,
+      payload: { artist: track.artist_name, title: track.track_name, album: track.album_name || '',
+        spotify_url: track.track_spotify_id ? 'https://open.spotify.com/track/' + track.track_spotify_id : '',
+        copyright: notice || '', section: c.section, line: c.line, context: c.context || '',
+        ...(startMs != null ? { start_ms: startMs } : {}) },
+      content_hash: sha256('lyrics:' + track.artist_name + ':' + track.track_name + ':' + c.line),
+    };
+  });
 
   const { data: ins, error: eErr } = await db.from('exercises')
     .upsert(exerciseRows, { onConflict: 'content_hash', ignoreDuplicates: true }).select('id');

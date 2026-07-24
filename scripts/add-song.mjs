@@ -56,6 +56,55 @@ async function mx(method, params) {
   return json.message.body;
 }
 
+// ---- Timestamp helpers ---------------------------------------------------
+
+function normalizeForMatch(s) {
+  return s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+async function fetchTimestampIndex(trackId) {
+  try {
+    const b = await mx('track.richsync.get', { track_id: trackId });
+    const raw = b?.richsync?.richsync_body;
+    if (raw) {
+      const items = JSON.parse(raw);
+      const map = new Map();
+      for (const it of items) {
+        const k = normalizeForMatch(it.x || '');
+        if (k) map.set(k, Math.round(it.ts * 1000));
+      }
+      if (map.size) return map;
+    }
+  } catch (e) { /* fall through */ }
+  try {
+    const b = await mx('track.subtitle.get', { track_id: trackId, subtitle_format: 'lrc' });
+    const raw = b?.subtitle?.subtitle_body;
+    if (raw) {
+      const map = new Map();
+      for (const line of raw.split('\n')) {
+        const m = line.match(/^\[(\d+):(\d+\.\d+)\](.*)/);
+        if (m) {
+          const ms = (parseInt(m[1], 10) * 60 + parseFloat(m[2])) * 1000;
+          const k = normalizeForMatch(m[3]);
+          if (k) map.set(k, Math.round(ms));
+        }
+      }
+      if (map.size) return map;
+    }
+  } catch (e) { /* no timestamps available */ }
+  return null;
+}
+
+function findTimestamp(index, line) {
+  if (!index) return null;
+  const key = normalizeForMatch(line);
+  if (index.has(key)) return index.get(key);
+  for (const [k, ms] of index) {
+    if (k.includes(key) || key.includes(k)) return ms;
+  }
+  return null;
+}
+
 // ---- Lyric processing (mirrors the Edge Function logic) ------------------
 
 function splitLyricBody(body) {
@@ -156,25 +205,29 @@ async function upsertSong(track, notice) {
   return data.id;
 }
 
-async function upsertExercises(songId, track, chosen, notice) {
-  const rows = chosen.map((c) => ({
-    type:    'lyrics',
-    level:   '',
-    source:  track.artist_name,
-    song_id: songId,
-    section: c.section,
-    payload: {
-      artist:    track.artist_name,
-      title:     track.track_name,
-      album:     track.album_name || '',
-      spotify_url: track.track_spotify_id ? 'https://open.spotify.com/track/' + track.track_spotify_id : '',
-      copyright: notice || '',
-      section:   c.section,
-      line:      c.line,
-      context:   c.context || '',
-    },
-    content_hash: sha256('lyrics:' + track.artist_name + ':' + track.track_name + ':' + c.line),
-  }));
+async function upsertExercises(songId, track, chosen, notice, tsIndex) {
+  const rows = chosen.map((c) => {
+    const startMs = findTimestamp(tsIndex, c.line);
+    return {
+      type:    'lyrics',
+      level:   '',
+      source:  track.artist_name,
+      song_id: songId,
+      section: c.section,
+      payload: {
+        artist:    track.artist_name,
+        title:     track.track_name,
+        album:     track.album_name || '',
+        spotify_url: track.track_spotify_id ? 'https://open.spotify.com/track/' + track.track_spotify_id : '',
+        copyright: notice || '',
+        section:   c.section,
+        line:      c.line,
+        context:   c.context || '',
+        ...(startMs != null ? { start_ms: startMs } : {}),
+      },
+      content_hash: sha256('lyrics:' + track.artist_name + ':' + track.track_name + ':' + c.line),
+    };
+  });
 
   const { data, error } = await db.from('exercises')
     .upsert(rows, { onConflict: 'content_hash', ignoreDuplicates: true }).select('id');
@@ -195,8 +248,9 @@ async function addTrack(track) {
   const chosen = processTrack(track, lines);
   if (!chosen.length) { console.log(`  ${track.track_name} — nothing usable`); return 0; }
 
+  const tsIndex  = await fetchTimestampIndex(track.track_id);
   const songId   = await upsertSong(track, notice);
-  const inserted = await upsertExercises(songId, track, chosen, notice);
+  const inserted = await upsertExercises(songId, track, chosen, notice, tsIndex);
   console.log(`  ${track.artist_name} — ${track.track_name}: ${inserted} exercise${inserted === 1 ? '' : 's'} added`);
   return inserted;
 }
