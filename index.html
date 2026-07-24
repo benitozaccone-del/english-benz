@@ -224,6 +224,8 @@
   .end-session:hover{background:#0A0A0A; color:#FAFAF7;}
   .reset{background:none; border:none; font-family:'Instrument Sans',sans-serif; font-size:13px; font-weight:500; color:#5A5A5A; text-decoration:underline; cursor:pointer; padding:0;}
   .reset:hover{color:#0A0A0A;}
+  .forget{margin-left:14px;}
+  .forget.armed{color:#C22C46; font-weight:700; text-decoration-thickness:2px;}
   .next{
     font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:14px;
     background:#0A0A0A; color:#FAFAF7; border:none;
@@ -468,7 +470,7 @@
   <div class="dots" id="tr-dots"></div>
   <p class="weak" id="tr-weakspots"></p>
   <div id="tr-body"><div class="loading" id="tr-loading">Fetching a sentence from today's news…</div></div>
-  <div class="actions"><button class="reset" id="tr-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="tr-end">End game</button><button class="next" id="tr-next">Next question</button></div></div>
+  <div class="actions"><button class="reset" id="tr-reset">Reset my stats</button><button class="reset forget" id="tr-forget">Forget seen history</button><div class="actions-right"><button class="end-session" id="tr-end">End game</button><button class="next" id="tr-next">Next question</button></div></div>
 </div>
 
 <div id="view-stats" style="display:none;">
@@ -484,7 +486,7 @@
   <div class="dots" id="audio-dots"></div>
   <p class="weak" id="audio-note"></p>
   <div id="audio-body"><div class="loading">Fetching a sentence from today's news…</div></div>
-  <div class="actions"><button class="reset" id="audio-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="audio-end">End game</button><button class="next" id="audio-next">Next question</button></div></div>
+  <div class="actions"><button class="reset" id="audio-reset">Reset my stats</button><button class="reset forget" id="audio-forget">Forget seen history</button><div class="actions-right"><button class="end-session" id="audio-end">End game</button><button class="next" id="audio-next">Next question</button></div></div>
 </div>
 
 <div id="view-lyrics" style="display:none;">
@@ -493,7 +495,7 @@
   <div class="dots" id="lyrics-dots"></div>
   <p class="weak" id="lyrics-note"></p>
   <div id="lyrics-body"><div class="loading">Looking for a song…</div></div>
-  <div class="actions"><button class="reset" id="lyrics-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="lyrics-end">End game</button><button class="next" id="lyrics-next">Next question</button></div></div>
+  <div class="actions"><button class="reset" id="lyrics-reset">Reset my stats</button><button class="reset forget" id="lyrics-forget">Forget seen history</button><div class="actions-right"><button class="end-session" id="lyrics-end">End game</button><button class="next" id="lyrics-next">Next question</button></div></div>
 </div>
 
 </div>
@@ -567,6 +569,49 @@ async function ebFetchExercises(type, level, n){
    The bucket is private: some clips read sentences from copyrighted books, which
    must not sit on an open URL. Signed links are minted per session and expire,
    so a URL that leaks stops working. One batched call signs the whole queue. */
+/* Clear the record of what this user has already been shown, for one game type.
+   Distinct from resetting a score: a score is a tally, this is the history that
+   drives least-seen-first ordering, the failure weighting and the "missed" list.
+   Returns how many rows went, or -1 if it could not run. */
+async function ebForgetProgress(type){
+  if(!ebCloud()) return -1;
+  try {
+    var r = await ebSB.rpc('forget_progress', { p_type: type || '' });
+    return r.error ? -1 : (r.data || 0);
+  } catch(e){ return -1; }
+}
+
+/* Two presses to wipe. This throws away sessions of history and cannot be
+   undone, so the first press only arms the button; it disarms itself if you
+   walk away. Cheaper than a modal and harder to hit by accident than one tap. */
+function wireForget(btnId, type, queueKeys){
+  var btn = document.getElementById(btnId);
+  if(!btn) return;
+  var label = btn.textContent, armed = false, timer = null;
+  function disarm(){ armed = false; btn.classList.remove('armed'); btn.textContent = label; }
+  btn.onclick = async function(){
+    if(!armed){
+      armed = true;
+      btn.classList.add('armed');
+      btn.textContent = 'Tap again to forget';
+      clearTimeout(timer);
+      timer = setTimeout(disarm, 4000);
+      return;
+    }
+    clearTimeout(timer);
+    armed = false; btn.classList.remove('armed');
+    btn.textContent = 'Forgetting…';
+    var n = await ebForgetProgress(type);
+    // Queued questions were chosen under the old history; drop them so the next
+    // batch is drawn fresh rather than finishing the old ordering.
+    for(var i=0; i<(queueKeys||[]).length; i++){
+      try { await window.storage.set(queueKeys[i], '[]', false); } catch(e){}
+    }
+    btn.textContent = (n < 0) ? 'Could not forget — are you signed in?' : ('Forgot ' + n + ' — all fresh again');
+    setTimeout(function(){ btn.textContent = label; }, 3500);
+  };
+}
+
 /* Exercises this user actually got wrong, worst first. next_exercises already
    pulls failures forward on its own, but "come back to this one now" is a
    different need from "show it sooner", so Statistics offers it directly. */
@@ -1659,7 +1704,6 @@ document.getElementById('lyrics-reset').onclick = async function(){
   lyricsStats = { correct: 0, wrong: 0 }; await lyricsSaveStats(); lyricsUpdateNote();
 };
 
-/* ---------- menu wiring ---------- */
 /* ---------- stats view ---------- */
 function accuracyFor(log, sinceMs){
   var relevant = sinceMs ? log.filter(function(e){ return e.t >= sinceMs; }) : log;
@@ -1798,6 +1842,14 @@ function ebEsc(s){
 }
 document.getElementById('stats-open').onclick = statsInit;
 document.getElementById('stats-back').onclick = function(){ showView('view-menu'); };
+
+/* Only these three keep history in `presentations`. Phrasal verbs score entirely
+   in the key-value store, so its "Reset my stats" already clears everything it
+   has and needs no companion. Queue keys are passed so the prefetch, chosen
+   under the old ordering, does not outlive it. */
+wireForget('tr-forget', 'translation', ['tr-queue-B2', 'tr-queue-C1', 'tr-queue-C2']);
+wireForget('audio-forget', 'audio', ['audio-queue', 'audio-queue-advanced']);
+wireForget('lyrics-forget', 'lyrics', []);
 
 /* ---------- menu wiring ---------- */
 /* Accordion: opening one subject closes the others, so the list stays short

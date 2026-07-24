@@ -419,3 +419,28 @@ grant execute on function public.next_exercises(text, text, integer)          to
 grant execute on function public.record_presentation(uuid, boolean)           to authenticated;
 grant execute on function public.next_phrasal_verbs(text, text, integer)      to authenticated;
 grant execute on function public.challenging_exercises(text, integer)         to authenticated;
+
+-- Clear this user's per-exercise history for one game type (or all, with '').
+-- Separate from resetting a score: the score is a tally, this is the record of
+-- what you have already been shown, and wiping it puts every exercise back in
+-- circulation. Runs as the invoker, so row-level security still confines the
+-- delete to the caller's own rows.
+create or replace function public.forget_progress(p_type text default '')
+returns integer
+language plpgsql
+security invoker
+as $$
+declare
+  removed integer;
+begin
+  delete from public.presentations p
+  using public.exercises e
+  where p.exercise_id = e.id
+    and p.user_id = auth.uid()
+    and (p_type = '' or e.type = p_type);
+  get diagnostics removed = row_count;
+  return removed;
+end;
+$$;
+
+grant execute on function public.forget_progress(text) to authenticated;
