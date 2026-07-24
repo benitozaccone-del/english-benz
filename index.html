@@ -57,10 +57,11 @@
   .menu-group{display:flex; flex-direction:column; gap:8px;}
   .group-btn[data-group-btn="pv"]{background:linear-gradient(105deg,#C6F462 0%,#A8E85C 100%);}
   .group-btn[data-group-btn="tr"]{background:linear-gradient(105deg,#C9B3FF 0%,#FFB9D8 100%);}
-  .group-btn[data-mode="lyrics"]{background:linear-gradient(105deg,#FFC9B5 0%,#FFE8A3 100%);}
-  .group-btn[data-group-btn="listen"]{background:linear-gradient(105deg,#0A0A0A 0%,#26314A 100%); color:#FAFAF7;}
-  .group-btn[data-group-btn="listen"] .sub{color:#C3C7D2;}
-  .group-btn[data-group-btn="listen"] .icon-circle{background:#C6F462; color:#0A0A0A;}
+  .group-btn[data-mode="lyrics"]{background:linear-gradient(105deg,#0A0A0A 0%,#26314A 100%); color:#FAFAF7;}
+  .group-btn[data-group-btn="listen"]{background:linear-gradient(105deg,#FFC9B5 0%,#FFE8A3 100%); color:#0A0A0A;}
+  .group-btn[data-mode="lyrics"] .sub{color:#C3C7D2;}
+  .group-btn[data-mode="lyrics"] .icon-circle{background:#C6F462; color:#0A0A0A;}
+  .group-btn[data-group-btn="listen"] .icon-circle{background:#FFC9B5; color:#0A0A0A;}
   .group-btn .chev svg{transition:transform .18s ease;}
   .menu-group.open .group-btn .chev svg{transform:rotate(180deg);}
 
@@ -135,8 +136,8 @@
      looking exactly as before. */
   #view-pv{--accent:#C6F462; --accent-2:#A8E85C; --soft:#F3FCE2; --line:#7CA83A;}
   #view-tr{--accent:#C9B3FF; --accent-2:#FFB9D8; --soft:#F7F1FF; --line:#8F6FD0;}
-  #view-audio{--accent:#C6F462; --accent-2:#26314A; --soft:#F1F3F8; --line:#26314A;}
-  #view-lyrics{--accent:#FFC9B5; --accent-2:#FFE8A3; --soft:#FFF6EE; --line:#C97A52;}
+  #view-audio{--accent:#FFC9B5; --accent-2:#FFE8A3; --soft:#FFF6EE; --line:#C97A52;}
+  #view-lyrics{--accent:#C6F462; --accent-2:#26314A; --soft:#F1F3F8; --line:#26314A;}
 
   /* The song IS the prompt, so its title carries the weight the sentence does
      elsewhere; the line beneath is the exercise, not the heading. */
@@ -148,12 +149,13 @@
   .spotify-link:hover{color:#1DB954;}
   .lyric-context{font-family:'Instrument Sans',sans-serif; font-size:13px; color:#9A9A92; font-style:italic; margin:0 0 0.75rem; line-height:1.4;}
   .sp-wrap{margin:0.75rem 0 1rem; border-radius:14px; overflow:hidden; border:1.5px solid #0A0A0A;}
-  .sp-controls{display:flex; align-items:center; gap:8px; padding:8px 10px; background:#FFF6EE; border-top:1.5px solid #0A0A0A;}
+  .sp-controls{display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--soft);}
   .sp-seek{flex:0 0 auto; padding:6px 11px; border-radius:8px; border:1.5px solid #0A0A0A; background:#FFFFFF; font-family:'Instrument Sans',sans-serif; font-size:13px; font-weight:600; color:#0A0A0A; cursor:pointer;}
   .sp-mid{flex:1; display:flex; flex-direction:column; gap:3px;}
-  .sp-slider{width:100%; height:4px; accent-color:var(--line,#C97A52); cursor:pointer;}
+  .sp-slider{width:100%; height:4px; accent-color:var(--line,#26314A); cursor:pointer;}
   .sp-time{font-family:'Instrument Sans',sans-serif; font-size:11px; color:#5A5A5A; text-align:right;}
   .sp-open-link{display:block; font-family:'Instrument Sans',sans-serif; font-size:11px; color:#5A5A5A; text-align:right; padding:4px 10px 6px; text-decoration:none;}
+  .sp-hint{margin:0; padding:0 10px 6px; font-size:10px; color:#8A8A8A; text-align:right; font-family:'Instrument Sans',sans-serif;}
   .sp-open-link:hover{color:#1DB954;}
   .lyric-credit{font-family:'Instrument Sans',sans-serif; font-size:11px; color:#7A7A72;
     margin:1rem 0 0; line-height:1.4;}
@@ -376,17 +378,7 @@
 
     <!-- No chevron and a direct data-mode: this subject has one exercise, so an
          accordion that expands to a single row would be friction for nothing. -->
-    <div class="menu-group" data-group="lyrics">
-      <button class="menu-btn group-btn" data-mode="lyrics">
-        <div>
-          <div class="title">Fill the lyrics</div>
-          <div class="sub">Name the song, then type the missing words</div>
-        </div>
-        <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
-      </button>
-    </div>
-
-    <div class="menu-group" data-group="listen">
+<div class="menu-group" data-group="listen">
       <button class="menu-btn group-btn" data-group-btn="listen" aria-expanded="false">
         <div>
           <div class="title">Listening</div>
@@ -410,6 +402,16 @@
           <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11M8 7v7M4 10v4M16 5v9M20 8v6"/><path d="M4 20h16"/><path d="M9 17.5h6"/></svg></span>
         </button>
       </div>
+    </div>
+
+    <div class="menu-group" data-group="lyrics">
+      <button class="menu-btn group-btn" data-mode="lyrics">
+        <div>
+          <div class="title">Fill the lyrics</div>
+          <div class="sub">Name the song, then type the missing words</div>
+        </div>
+        <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></span>
+      </button>
     </div>
   </div>
   <button class="stats-link" id="stats-open">See my stats <span>→</span></button>
@@ -1713,6 +1715,7 @@ function lyricsRender(q){
               '<button class="sp-seek" id="sp-fwd">5s »</button>' +
             '</div>' +
             '<a class="sp-open-link" href="' + ebEsc(lyricsSpotifyUrl(q)) + '" target="_blank" rel="noopener noreferrer">Open in Spotify ↗</a>' +
+          '<p class="sp-hint">Log into Spotify in your browser for the full song</p>' +
           '</div>'
         : '<p style="margin:0 0 0.75rem;"><a class="spotify-link" href="' + ebEsc(lyricsSpotifyUrl(q)) + '" target="_blank" rel="noopener noreferrer">Listen on Spotify</a></p>') +
       (q.context ? '<div class="lyric-context">… ' + ebEsc(q.context) + '</div>' : '') +
@@ -1728,10 +1731,12 @@ function lyricsRender(q){
   if(trackId){
     _spInit(trackId);
     document.getElementById('sp-back').onclick = function(){
-      if(_spCtrl) _spCtrl.seek(Math.max(0, _spPos - 5));
+      var pos = parseInt((document.getElementById('sp-slider')||{}).value||0,10);
+      if(_spCtrl) _spCtrl.seek(Math.max(0, pos - 5));
     };
     document.getElementById('sp-fwd').onclick = function(){
-      if(_spCtrl) _spCtrl.seek(_spPos + 5);
+      var pos = parseInt((document.getElementById('sp-slider')||{}).value||0,10);
+      if(_spCtrl) _spCtrl.seek(pos + 5);
     };
     var sl = document.getElementById('sp-slider');
     sl.addEventListener('input', function(){ _spSeeking = true; });
