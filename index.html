@@ -154,8 +154,8 @@
   .sp-slider{width:100%; height:4px; accent-color:var(--line,#26314A); cursor:pointer;}
   .sp-time{font-family:'Instrument Sans',sans-serif; font-size:11px; color:#5A5A5A; text-align:right;}
   .sp-footer{display:flex; align-items:center; justify-content:space-between; padding:5px 10px 8px; gap:8px;}
-  .sp-preview-pill{font-family:'Instrument Sans',sans-serif; font-size:10.5px; color:#7A7A72;
-    background:#F0F0EA; border-radius:999px; padding:3px 9px; white-space:nowrap; flex-shrink:0;}
+  .sp-preview-pill{font-family:'Instrument Sans',sans-serif; font-size:10.5px; color:#A0A09A;
+    white-space:nowrap; flex-shrink:0;}
   .sp-open-link{display:inline-flex; align-items:center; gap:4px; font-family:'Instrument Sans',sans-serif;
     font-size:12px; font-weight:600; color:#0A0A0A; text-decoration:none; flex-shrink:0;}
   .sp-open-link:hover{color:#1DB954;}
@@ -1717,7 +1717,7 @@ function lyricsRender(q){
               '<button class="sp-seek" id="sp-fwd">5s »</button>' +
             '</div>' +
             '<div class="sp-footer">' +
-              '<span class="sp-preview-pill">Preview · log in for the full song</span>' +
+              '<span class="sp-preview-pill">Log into Spotify for the full song</span>' +
               '<a class="sp-open-link" href="' + ebEsc(lyricsSpotifyUrl(q)) + '" target="_blank" rel="noopener noreferrer">Open in Spotify<svg viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom:1px"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></a>' +
             '</div>' +
           '</div>'
