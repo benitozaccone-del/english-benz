@@ -38,9 +38,17 @@ if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
 
 const argv = process.argv.slice(2);
 const DRY_RUN = argv.includes('--dry-run');
-const files = argv.filter((a) => !a.startsWith('--'));
+// The title becomes the visible "source" on every exercise drawn from the book,
+// so a filename like London_White_Fang_1906 deserves an override.
+const titleIdx = argv.indexOf('--title');
+const TITLE = titleIdx >= 0 ? argv[titleIdx + 1] : null;
+const files = argv.filter((a, i) => !a.startsWith('--') && i !== titleIdx + 1);
 if (!files.length) {
-  console.error('Usage: node ingest-books.mjs [--dry-run] <file.pdf> [more.pdf …]');
+  console.error('Usage: node ingest-books.mjs [--dry-run] [--title "Name"] <file.pdf> [more.pdf …]');
+  process.exit(1);
+}
+if (TITLE && files.length > 1) {
+  console.error('--title applies to a single file; pass one PDF at a time when using it.');
   process.exit(1);
 }
 
@@ -76,8 +84,19 @@ async function extractPdf(path) {
   await doc.destroy();
 
   return pages.join('\n\n')
+    // Postgres text columns reject NUL, and PDF extraction emits it along with
+    // other stray control codes; without this the insert fails outright with
+    // "unsupported Unicode escape sequence".
+    .replace(/\u0000/g, '')
+    .replace(/[\u0001-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, ' ')
+    .replace(/\uFFFD/g, '')               // replacement chars from undecodable glyphs
     .replace(/-\n(\w)/g, '$1')            // rejoin words hyphenated across a line break
-    .replace(/([^.!?"'\n])\n(?=[a-z(])/g, '$1 ')   // a line ending mid-clause continues
+    // Reflow. The earlier rule only joined a break when the NEXT line began
+    // lowercase, which leaves most breaks intact in a book full of dialogue and
+    // proper nouns — 87% of White Fang's sentences still spanned a newline. Join
+    // on the PREVIOUS line instead: if it did not end a sentence, the text runs
+    // on. A blank line is a real paragraph break and is preserved.
+    .replace(/([^.!?:;"'\n])\n(?!\n)/g, '$1 ')
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
@@ -95,7 +114,7 @@ function titleFrom(file) {
 let stored = 0;
 for (const file of files) {
   if (!existsSync(file)) { console.warn(`  ✗ ${file} — not found`); continue; }
-  const title = titleFrom(file);
+  const title = TITLE || titleFrom(file);
   process.stdout.write(`  ${title} … `);
   let text;
   try { text = await extractPdf(file); }
