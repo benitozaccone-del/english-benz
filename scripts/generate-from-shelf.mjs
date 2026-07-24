@@ -43,11 +43,17 @@ const flag = (n, d) => { const i = argv.indexOf('--' + n); return i >= 0 && argv
 const DRY_RUN = argv.includes('--dry-run');
 const TYPE = (flag('type', 'audio') || 'audio').toLowerCase();
 const SOURCE = flag('source', '');            // substring match on the document title
+const KIND = flag('kind', '');                // restrict to one shelf kind: url, book, news…
 const LEVEL = (flag('level', 'B2') || 'B2').toUpperCase();
 const TARGET = Math.max(1, Math.min(parseInt(flag('count', '20'), 10) || 20, 400));
 const PER_CALL = Math.max(1, Math.min(parseInt(flag('per-call', '12'), 10) || 12, 20));
-const WINDOW = 14000;                    // characters of source shown per call
-const MODEL = 'claude-sonnet-5';
+const WINDOW = parseInt(flag('window', '14000'), 10) || 14000;   // characters of source per call
+// Picking sentences out of a passage and writing decoys is not a hard task, so a
+// smaller model does it at a fraction of the cost. --model haiku switches to it;
+// the default stays Sonnet for the levelling judgement on C1/C2.
+const MODEL_ALIASES = { haiku: 'claude-haiku-4-5', sonnet: 'claude-sonnet-5', opus: 'claude-opus-4-8' };
+const MODEL_ARG = flag('model', 'sonnet');
+const MODEL = MODEL_ALIASES[MODEL_ARG] || MODEL_ARG;
 
 if (!['B2', 'C1', 'C2'].includes(LEVEL)) { console.error('--level must be B2, C1 or C2'); process.exit(1); }
 if (!['audio', 'translation'].includes(TYPE)) { console.error('--type must be audio or translation'); process.exit(1); }
@@ -115,6 +121,10 @@ const { data: docs, error: dErr } = await db
   .in('kind', ['book', 'news', 'pdf', 'url', 'text']);
 if (dErr) { console.error('Could not read source_documents:', dErr.message); process.exit(1); }
 let usable = (docs || []).filter((d) => (d.content || '').length > 500);
+if (KIND) {
+  usable = usable.filter((d) => d.kind === KIND);
+  if (!usable.length) { console.error(`Nothing on the shelf of kind "${KIND}".`); process.exit(1); }
+}
 if (SOURCE) {
   const want = SOURCE.toLowerCase();
   usable = usable.filter((d) => (d.title || '').toLowerCase().includes(want));
@@ -181,7 +191,12 @@ const perSource = new Map();
 // lot by author — terse prose clears the 5-15 word filter far more often than
 // long subordinated sentences — so random selection quietly hands most of the
 // batch to one book. The cap is the backstop when even fair turns skew.
-const MAX_PER_SOURCE = Math.max(1, Math.ceil(TARGET / usable.length * (parseFloat(flag('skew', '1.8')) || 1.8)));
+// Never below what a single call can yield. A fair share alone collapses to 1-2
+// when the shelf holds many short documents, which throws away most of every
+// response and turns a six-call run into thirty — the diversity is free, the
+// calls are not. With many sources even a full call is a small slice of the batch.
+const FAIR_SHARE = Math.ceil(TARGET / usable.length * (parseFloat(flag('skew', '1.8')) || 1.8));
+const MAX_PER_SOURCE = Math.max(PER_CALL, FAIR_SHARE);
 
 while (made + pending.length < TARGET && calls < Math.ceil(TARGET / 2) + 25) {
   const doc = usable[calls % usable.length];
@@ -190,11 +205,19 @@ while (made + pending.length < TARGET && calls < Math.ceil(TARGET / 2) + 25) {
   try {
     const res = await anthropic.messages.create({
       model: MODEL,
-      max_tokens: 8000,
+      max_tokens: 16000,
       system,
       messages: [{ role: 'user', content: 'PASSAGE:\n' + passage(doc.content) }],
       output_config: { format: { type: 'json_schema', schema: SCHEMA } },
     });
+    // Truncation is not malformed JSON. Without this check a response cut off at
+    // max_tokens surfaces as "Unexpected end of JSON input", which sends you
+    // looking for a parsing bug instead of a budget one — adaptive thinking
+    // spends from the same allowance, so the ceiling is reached more easily
+    // than the size of the answer suggests.
+    if (res.stop_reason === 'max_tokens') {
+      throw new Error(`response hit max_tokens — lower --per-call (currently ${PER_CALL})`);
+    }
     items = JSON.parse(res.content.filter((b) => b.type === 'text').map((b) => b.text).join('')).exercises || [];
   } catch (e) {
     const msg = String(e.message || e);

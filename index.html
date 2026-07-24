@@ -1080,6 +1080,12 @@ document.getElementById('tr-reset').onclick = async function(){ trStats = {topic
 /* ---------- spot-the-transcription (audio) game ---------- */
 var AUDIO_STATS_KEY = 'audio-stats';
 var AUDIO_QUEUE_KEY = 'audio-queue';
+/* Per level. The two modes prefetch independently, so a queue filled in basic
+   was still waiting when you switched to advanced and handed you the very
+   sentences you had just been shown. Separate keys keep each mode's lookahead to
+   itself; the shared pool still stops a genuine repeat coming round soon,
+   because answering one increments its times_seen for both. */
+function audioQueueKey(){ return audioLevel === 'advanced' ? AUDIO_QUEUE_KEY + '-advanced' : AUDIO_QUEUE_KEY; }
 var AUDIO_QUEUE_TARGET = 3;
 var AUDIO_BATCH_SIZE = 3;
 var audioQueue = [];
@@ -1161,7 +1167,7 @@ function audioUpdateNote(){
 
 async function audioLoadQueue(){
   try {
-    var res = await window.storage.get(AUDIO_QUEUE_KEY, false);
+    var res = await window.storage.get(audioQueueKey(), false);
     var queue = res ? JSON.parse(res.value) : [];
     // The queue is cached with its clip URLs baked in, so questions queued before
     // a sentence was voiced would keep playing the browser voice forever. Re-attach
@@ -1171,7 +1177,7 @@ async function audioLoadQueue(){
   } catch(e){ return []; }
 }
 async function audioSaveQueue(){
-  try { await window.storage.set(AUDIO_QUEUE_KEY, JSON.stringify(audioQueue), false); } catch(e){}
+  try { await window.storage.set(audioQueueKey(), JSON.stringify(audioQueue), false); } catch(e){}
 }
 
 async function audioFetchBatch(count){
