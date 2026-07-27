@@ -1586,6 +1586,7 @@ var lyricsMode = 'auto', lyricsArtist = null, lyricsDecade = null;
    rather than as a song you are trying to remember. Index 0 is never blanked, so
    the line always opens with something to anchor to. */
 var LYRIC_FILLER = /^(oh|ah|eh|uh|hmm|hm|mm|ooh|oo|yeah|yea|hey|yo|la|na|da|sha|ba|doo|woo|whoa|woah|bah|ha|ay|aye|aah|nah|aw|oh-oh|na-na|la-la|yeah-yeah)$/i;
+var LYRIC_STOPWORD = /^(a|an|the|and|or|but|so|yet|for|nor|to|of|in|on|at|by|up|as|is|it|its|be|am|are|was|were|has|had|have|do|did|i|me|my|you|your|he|she|we|they|his|her|our|their|this|that|with|not|no|if|then|than)$/i;
 function clozeBlankSet(words){
   var n = words.length;
   if(n < 4) return {};
@@ -1593,7 +1594,7 @@ function clozeBlankSet(words){
   var cands = [];
   for(var i = 1; i < n; i++){
     var core = clozeSplitWord(words[i]).core;
-    if(core && !LYRIC_FILLER.test(core)) cands.push({ i: i, score: core.length + Math.random() * 3 });
+    if(core && !LYRIC_FILLER.test(core) && !LYRIC_STOPWORD.test(core)) cands.push({ i: i, score: core.length + Math.random() * 3 });
   }
   cands.sort(function(a, b){ return b.score - a.score; });
   var out = {};
