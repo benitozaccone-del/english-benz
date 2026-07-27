@@ -59,7 +59,7 @@ async function fetchTimestampIndex(trackId, meta) {
         const map = new Map();
         for (const it of items) {
           const k = normalizeForMatch(it.x || '');
-          if (k) map.set(k, Math.round(it.ts * 1000));
+          if (k && !map.has(k)) map.set(k, Math.round(it.ts * 1000));
         }
         if (map.size) return map;
       }
@@ -74,7 +74,7 @@ async function fetchTimestampIndex(trackId, meta) {
           if (m) {
             const ms = (parseInt(m[1], 10) * 60 + parseFloat(m[2])) * 1000;
             const k = normalizeForMatch(m[3]);
-            if (k) map.set(k, Math.round(ms));
+            if (k && !map.has(k)) map.set(k, Math.round(ms));
           }
         }
         if (map.size) return map;
@@ -96,7 +96,7 @@ async function fetchTimestampIndex(trackId, meta) {
             if (m) {
               const ms = (parseInt(m[1], 10) * 60 + parseFloat(m[2])) * 1000;
               const k = normalizeForMatch(m[3]);
-              if (k) map.set(k, Math.round(ms));
+              if (k && !map.has(k)) map.set(k, Math.round(ms));
             }
           }
           if (map.size) return map;
