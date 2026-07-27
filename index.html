@@ -1825,13 +1825,23 @@ async function lyricsFetchBatch(n){
   var rows = await ebFetchExercises('lyrics', '', n || LYRICS_BATCH_SIZE);
   return rows || [];
 }
+function lyricsDedupeByTitle(existing, incoming){
+  var seen = new Set(existing.map(function(q){ return q.artist + '|' + q.title; }));
+  return incoming.filter(function(q){
+    var key = q.artist + '|' + q.title;
+    if(seen.has(key)) return false;
+    seen.add(key); return true;
+  });
+}
+
 async function lyricsTopUp(){
   if(lyricsQueueLoading || lyricsQueue.length >= LYRICS_QUEUE_TARGET) return;
   lyricsQueueLoading = true;
   try {
     var batch = await lyricsFetchBatch(LYRICS_QUEUE_TARGET - lyricsQueue.length);
     batch.sort(function(){ return Math.random() - 0.5; });
-    lyricsQueue = lyricsQueue.concat(batch).slice(0, LYRICS_QUEUE_TARGET);
+    var fresh = lyricsDedupeByTitle(lyricsQueue, batch);
+    lyricsQueue = lyricsQueue.concat(fresh).slice(0, LYRICS_QUEUE_TARGET);
   } finally { lyricsQueueLoading = false; }
 }
 
@@ -1849,8 +1859,10 @@ async function lyricsLoad(){
   if(!q){
     document.getElementById('lyrics-body').innerHTML = '<div class="loading">Looking for a song\u2026</div>';
     var batch = await lyricsFetchBatch(LYRICS_BATCH_SIZE);
-    q = batch.shift();
-    lyricsQueue = batch;
+    batch.sort(function(){ return Math.random() - 0.5; });
+    var deduped = lyricsDedupeByTitle([], batch);
+    q = deduped.shift();
+    lyricsQueue = deduped;
   }
   if(!q){
     // An empty pool is the normal state until songs are loaded, so say what to do.
