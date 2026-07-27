@@ -910,11 +910,12 @@ var PV_MODES = {
 };
 var pvPool = PV_FALLBACK, pvScore = 0, pvTotal = 0, pvAnswered = false, pvStats = {}, pvPoolNote = '';
 var pvResults = [];   // this session's run, oldest first
+var pvCooldown = {}; // verb → remaining picks to skip after a wrong answer
 var PV_STATS_KEY = 'pv-stats';
 
 async function pvInit(mode){
   var cfg = PV_MODES[mode] || PV_MODES.pv100;
-  pvScore = 0; pvTotal = 0; pvResults = [];
+  pvScore = 0; pvTotal = 0; pvResults = []; pvCooldown = {};
   try {
     var res = await window.storage.get(PV_STATS_KEY, false);
     pvStats = res ? JSON.parse(res.value) : {};
@@ -940,11 +941,17 @@ async function pvInit(mode){
 async function pvSave(){ try{ await window.storage.set(PV_STATS_KEY, JSON.stringify(pvStats), false); }catch(e){} }
 function pvStatFor(v){ if(!pvStats[v]) pvStats[v]={correct:0,wrong:0}; return pvStats[v]; }
 function pvPick(){
-  var weights = pvPool.map(function(e){
+  // Decrement cooldowns each pick; remove expired entries
+  Object.keys(pvCooldown).forEach(function(v){ pvCooldown[v]--; if(pvCooldown[v]<=0) delete pvCooldown[v]; });
+  function weightFor(e, ignoreCooldown){
+    if(!ignoreCooldown && pvCooldown[e.verb]) return 0;
     var st=pvStatFor(e.verb); var att=st.correct+st.wrong; var er=att>0? st.wrong/att : 0.5;
-    return 1 + er*5 + st.wrong;
-  });
+    return 1 + er*5 + Math.min(st.wrong, 3); // cap wrong-count bonus at 3
+  }
+  var weights = pvPool.map(function(e){ return weightFor(e, false); });
   var total = weights.reduce(function(a,b){return a+b;},0);
+  // If all on cooldown (tiny pool), ignore cooldowns as fallback
+  if(!total){ weights = pvPool.map(function(e){ return weightFor(e, true); }); total = weights.reduce(function(a,b){return a+b;},0); }
   var r = Math.random()*total;
   for(var i=0;i<pvPool.length;i++){ r-=weights[i]; if(r<=0) return pvPool[i]; }
   return pvPool[pvPool.length-1];
@@ -1001,7 +1008,7 @@ async function pvAnswer(opt, btn){
   var verb = pvCurrent.verb, meaning = pvCurrent.meaning, correctText = pvCurrent.q.a;
   var ok = (opt===correctText); if(ok) pvScore++;
   pvResults.push(ok); renderDots('pv-dots', pvResults, false);
-  var st = pvStatFor(verb); if(ok) st.correct++; else st.wrong++;
+  var st = pvStatFor(verb); if(ok) st.correct++; else { st.wrong++; pvCooldown[verb] = 3; }
   await logAttempt('pv', ok);
   await pvSave();
   var children = document.getElementById('pv-options').children;
