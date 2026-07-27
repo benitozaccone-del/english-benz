@@ -1607,7 +1607,7 @@ function clozeBlankSet(words){
    fires window.onSpotifyIframeApiReady once ready; calls queued before that
    are flushed at that moment. One controller lives at a time; it is
    destroyed before the next exercise renders. */
-var _spAPI = null, _spQueue = [], _spCtrl = null, _spCurrentTrackId = null, _spSeekTarget = null;
+var _spAPI = null, _spQueue = [], _spCtrl = null, _spCurrentTrackId = null;
 
 window.onSpotifyIframeApiReady = function(IFrameAPI){
   _spAPI = IFrameAPI;
@@ -1636,9 +1636,8 @@ function _spTrackId(url){
   return m ? m[1] : null;
 }
 
-function _spInit(trackId, seekMs){
+function _spInit(trackId){
   _spCurrentTrackId = trackId;
-  _spSeekTarget = (seekMs != null) ? seekMs : null;
   _spLoad(function(API){
     _spDestroy();
     var wrap = document.getElementById('sp-embed');
@@ -1646,19 +1645,7 @@ function _spInit(trackId, seekMs){
     wrap.innerHTML = '<div id="sp-target"></div>';
     API.createController(document.getElementById('sp-target'),
       { uri: 'spotify:track:' + trackId, width: '100%', height: '80' },
-      function(ctrl){
-        _spCtrl = ctrl;
-        if(_spSeekTarget != null){
-          var done = false;
-          ctrl.addListener('playback_update', function(e){
-            if(!done && e.data.isPaused === false){
-              done = true;
-              var seekTo = Math.max(0, _spSeekTarget - 2000);
-              setTimeout(function(){ ctrl.seek(seekTo); }, 800);
-            }
-          });
-        }
-      }
+      function(ctrl){ _spCtrl = ctrl; }
     );
   });
 }
@@ -1926,10 +1913,9 @@ function lyricsRender(q){
     '</div>';
 
   if(trackId){
-    var seekMs = (q.start_ms != null) ? q.start_ms : null;
-    _spInit(trackId, seekMs);
+    _spInit(trackId);
     document.getElementById('sp-reload').onclick = function(){
-      if(_spCurrentTrackId) _spInit(_spCurrentTrackId, _spSeekTarget);
+      if(_spCurrentTrackId) _spInit(_spCurrentTrackId);
     };
   }
 
