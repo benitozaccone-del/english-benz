@@ -855,6 +855,7 @@ function renderDots(id, results, showCurrent){
 }
 function showView(id){
   ['view-auth','view-menu','view-admin','view-pv','view-tr','view-stats','view-audio','view-lyrics'].forEach(function(v){ document.getElementById(v).style.display = (v===id) ? 'block' : 'none'; });
+  if(id !== 'view-auth') try{ localStorage.setItem('eb-last-view', id); }catch(e){}
 }
 
 /* ---------- phrasal verbs: offline fallback ----------
@@ -2195,7 +2196,7 @@ document.querySelectorAll('.group-btn').forEach(function(btn){
   };
 });
 function ebReturnToMenu(){
-  try{ localStorage.removeItem('eb-last-mode'); localStorage.removeItem('lyrics-pending'); }catch(e){}
+  try{ localStorage.removeItem('eb-last-mode'); localStorage.removeItem('eb-last-view'); localStorage.removeItem('lyrics-pending'); }catch(e){}
   showView('view-menu');
 }
 function ebLaunchMode(mode){
@@ -2221,12 +2222,13 @@ function ebRoute(){
   if(ad) ad.style.display = (ebUser && ebUser.email === EB_ADMIN_EMAIL) ? 'inline-flex' : 'none';
   if(ebUser){
     if(so) so.style.display = 'inline-flex';
+    // Read saved state before showView('view-menu') overwrites eb-last-view.
+    var lastMode, lastView;
+    try{ lastMode = localStorage.getItem('eb-last-mode'); lastView = localStorage.getItem('eb-last-view'); }catch(e){}
     showView('view-menu');
-    // Resume the game the user was in before the page reloaded (iOS tab eviction).
-    try{
-      var last = localStorage.getItem('eb-last-mode');
-      if(last) ebLaunchMode(last);
-    }catch(e){}
+    if(lastMode) ebLaunchMode(lastMode);
+    else if(lastView === 'view-admin') { showView('view-admin'); adminLoadDocs(); }
+    else if(lastView === 'view-stats') { showView('view-stats'); }
   } else {
     if(so) so.style.display = 'none';
     showView(ebSB ? 'view-auth' : 'view-menu');   // no Supabase configured -> offline, straight to menu
