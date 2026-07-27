@@ -2006,9 +2006,15 @@ function lyricsRender(q){
     lyricsUpdateNote();
   }
 
-  document.getElementById('lyrics-skip').onclick = function(){
+  document.getElementById('lyrics-skip').onclick = async function(){
     lyricsClearPending();
     graded = true;
+    lyricsResults.push(false);
+    lyricsStats.wrong = (lyricsStats.wrong || 0) + 1;
+    renderDots('lyrics-dots', lyricsResults, false);
+    await lyricsSaveStats();
+    await logAttempt('lyrics', false);
+    if(q._id) ebRecord(q._id, false);
     lyricsLoad();
   };
 
