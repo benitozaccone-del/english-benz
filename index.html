@@ -296,9 +296,9 @@
   .admin-group{display:flex; flex-direction:column; gap:10px; border:1.5px solid #0A0A0A; border-radius:18px; padding:1rem;}
   .admin-group-title{font-family:'Instrument Sans',sans-serif; font-weight:600; font-size:14px;}
   .admin-hint{font-family:'Instrument Sans',sans-serif; font-size:12.5px; color:#5A5A5A; margin:0; line-height:1.45;}
-  .admin-song-msg{font-family:'Instrument Sans',sans-serif; font-size:13px; margin:4px 0 0; padding:8px 12px; border-radius:10px; background:#F0F8F4; color:#0B7A5B; border:1px solid #B2DDD0;}
-  .admin-song-msg.error{background:#FFF0F2; color:#C22C46; border-color:#F5BFC8;}
-  .admin-song-msg.ok{background:#F0F8F4; color:#0B7A5B; border-color:#B2DDD0;}
+  .admin-song-msg,.admin-group-msg{font-family:'Instrument Sans',sans-serif; font-size:13px; margin:4px 0 0; padding:8px 12px; border-radius:10px; background:#F0F8F4; color:#0B7A5B; border:1px solid #B2DDD0;}
+  .admin-song-msg.error,.admin-group-msg.error{background:#FFF0F2; color:#C22C46; border-color:#F5BFC8;}
+  .admin-song-msg.ok,.admin-group-msg.ok{background:#F0F8F4; color:#0B7A5B; border-color:#B2DDD0;}
   .admin-group select{font-family:'Instrument Sans',sans-serif; font-size:16px; padding:12px 14px; border:1.5px solid #0A0A0A; border-radius:14px; background:#FFFFFF; color:#0A0A0A; max-width:100%; width:100%;}
   .auth-primary[disabled]{opacity:.45; cursor:default; transform:none;}
   .signout-link{display:inline-flex; align-items:center; gap:6px; background:none; border:none; color:#5A5A5A; font-family:'Instrument Sans',sans-serif; font-size:13px; font-weight:600; cursor:pointer; margin-top:16px; padding:4px;}
@@ -468,18 +468,21 @@
       <div class="admin-group-title">Today's news</div>
       <p class="admin-hint">Searches the web for recent articles and builds translation, listening and phrasal-verb exercises from real sentences.</p>
       <button class="auth-primary" id="admin-news">Fetch fresh news</button>
+      <p class="admin-group-msg" id="admin-log-news" style="display:none;"></p>
     </div>
 
     <div class="admin-group">
       <div class="admin-group-title">From a web page</div>
       <input id="admin-url" type="url" placeholder="https://example.com/article" />
       <button class="auth-primary" id="admin-url-go">Generate from URL</button>
+      <p class="admin-group-msg" id="admin-log-url" style="display:none;"></p>
     </div>
 
     <div class="admin-group">
       <div class="admin-group-title">From a PDF</div>
       <input id="admin-file" type="file" accept="application/pdf" />
       <button class="auth-primary" id="admin-generate">Generate from PDF</button>
+      <p class="admin-group-msg" id="admin-log-pdf" style="display:none;"></p>
     </div>
 
     <div class="admin-group">
@@ -494,7 +497,7 @@
         </select>
       </label>
       <button class="auth-primary" id="admin-song-go">Fetch lyrics</button>
-      <p class="admin-song-msg" id="admin-song-msg" style="display:none;"></p>
+      <p class="admin-group-msg" id="admin-song-msg" style="display:none;"></p>
     </div>
 
     <div class="admin-group">
@@ -502,6 +505,7 @@
       <p class="admin-hint">Ingested novels. Each run draws different passages, so the same book keeps yielding new exercises.</p>
       <select id="admin-books"><option value="">Loading…</option></select>
       <button class="auth-primary" id="admin-book-go">Generate from this book</button>
+      <p class="admin-group-msg" id="admin-log-books" style="display:none;"></p>
     </div>
 
     <div class="admin-group">
@@ -509,9 +513,8 @@
       <p class="admin-hint">Everything ingested so far — news, pages, PDFs and books. Generate again from text you already have.</p>
       <select id="admin-docs"><option value="">Loading…</option></select>
       <button class="auth-primary" id="admin-reuse">Generate from saved text</button>
+      <p class="admin-group-msg" id="admin-log-reuse" style="display:none;"></p>
     </div>
-
-    <p class="auth-msg" id="admin-log" style="color:#0A0A0A;"></p>
   </div>
 </div>
 
@@ -2249,15 +2252,20 @@ async function extractPdfText(file){
    differs. Buttons are disabled for the duration so a slow news search can't be
    fired twice. */
 function adminBusy(on){
-  ['admin-news','admin-url-go','admin-generate','admin-reuse'].forEach(function(id){
+  ['admin-news','admin-url-go','admin-generate','admin-reuse','admin-book-go','admin-song-go'].forEach(function(id){
     var b = document.getElementById(id); if(b) b.disabled = on;
   });
 }
-async function adminCall(payload, working){
-  var log = document.getElementById('admin-log');
-  if(!ebSB){ log.textContent = 'This needs a live connection.'; return null; }
+function adminSetMsg(logEl, text, isError){
+  if(!logEl) return;
+  logEl.textContent = text;
+  logEl.className = 'admin-group-msg' + (isError ? ' error' : ' ok');
+  logEl.style.display = text ? '' : 'none';
+}
+async function adminCall(payload, working, logEl){
+  if(!ebSB){ adminSetMsg(logEl, 'This needs a live connection.', true); return null; }
   payload.count = parseInt(document.getElementById('admin-count').value, 10) || 6;
-  if(working) log.textContent = working;   // omitted by background refreshes, which must not overwrite a result
+  if(working) adminSetMsg(logEl, working, false);
   adminBusy(true);
   try {
     var sess = await ebSB.auth.getSession();
@@ -2268,21 +2276,21 @@ async function adminCall(payload, working){
       body: JSON.stringify(payload)
     });
     var data = await res.json().catch(function(){ return {}; });
-    if(!res.ok){ log.textContent = 'Error: ' + (data.error || ('HTTP ' + res.status)); return null; }
+    if(!res.ok){ adminSetMsg(logEl, 'Error: ' + (data.error || ('HTTP ' + res.status)), true); return null; }
     return data;
   } catch(e){
-    log.textContent = 'Request failed: ' + e.message;
+    adminSetMsg(logEl, 'Request failed: ' + e.message, true);
     return null;
   } finally { adminBusy(false); }
 }
-function adminReport(data){
+function adminReport(data, logEl){
   if(!data) return;
   var msg = 'Done — ' + data.inserted + ' new exercises (of ' + data.generated + ' generated; duplicates skipped)'
           + ', ' + (data.phrasal_verbs || 0) + ' new phrasal verbs and '
           + (data.phrasal_verb_examples || 0) + ' new usage examples.';
   if(data.document_title) msg += ' Saved as "' + data.document_title + '" (' + Math.round((data.chars||0)/1000) + 'k characters).';
   if(data.errors && data.errors.length) msg += ' Some batches failed: ' + data.errors.join(' | ');
-  document.getElementById('admin-log').textContent = msg;
+  adminSetMsg(logEl, msg, false);
   adminLoadDocs();
 }
 
@@ -2309,63 +2317,59 @@ async function adminLoadDocs(){
 }
 
 async function adminGenerate(){
-  var log = document.getElementById('admin-log');
+  var logEl = document.getElementById('admin-log-pdf');
   var f = document.getElementById('admin-file').files[0];
-  if(!window.pdfjsLib){ log.textContent = 'This needs a live connection.'; return; }
-  if(!f){ log.textContent = 'Choose a PDF first.'; return; }
-  log.textContent = 'Reading PDF…';
+  if(!window.pdfjsLib){ adminSetMsg(logEl, 'This needs a live connection.', true); return; }
+  if(!f){ adminSetMsg(logEl, 'Choose a PDF first.', true); return; }
+  adminSetMsg(logEl, 'Reading PDF…', false);
   var text;
   try { text = await extractPdfText(f); }
-  catch(e){ log.textContent = 'Could not read that PDF: ' + e.message; return; }
-  if(!text.trim()){ log.textContent = 'No selectable text found — is it a scanned image rather than a text PDF?'; return; }
+  catch(e){ adminSetMsg(logEl, 'Could not read that PDF: ' + e.message, true); return; }
+  if(!text.trim()){ adminSetMsg(logEl, 'No selectable text found — is it a scanned image rather than a text PDF?', true); return; }
   adminReport(await adminCall(
     { mode: 'document', text: text, filename: f.name },
-    'Generating from ' + Math.round(text.length/1000) + 'k characters… this can take a minute.'
-  ));
+    'Generating from ' + Math.round(text.length/1000) + 'k characters… this can take a minute.',
+    logEl
+  ), logEl);
 }
 document.getElementById('admin-open').onclick = function(){ showView('view-admin'); adminLoadDocs(); };
 document.getElementById('admin-back').onclick = function(){ ebReturnToMenu(); };
 document.getElementById('admin-generate').onclick = adminGenerate;
 document.getElementById('admin-news').onclick = async function(){
-  adminReport(await adminCall({ mode: 'news' }, 'Searching the web for recent articles… this can take a couple of minutes.'));
+  var logEl = document.getElementById('admin-log-news');
+  adminReport(await adminCall({ mode: 'news' }, 'Searching the web for recent articles… this can take a couple of minutes.', logEl), logEl);
 };
 document.getElementById('admin-url-go').onclick = async function(){
+  var logEl = document.getElementById('admin-log-url');
   var u = document.getElementById('admin-url').value.trim();
-  if(!u){ document.getElementById('admin-log').textContent = 'Paste a URL first.'; return; }
-  adminReport(await adminCall({ mode: 'url', url: u }, 'Fetching that page and generating…'));
+  if(!u){ adminSetMsg(logEl, 'Paste a URL first.', true); return; }
+  adminReport(await adminCall({ mode: 'url', url: u }, 'Fetching that page and generating…', logEl), logEl);
 };
 document.getElementById('admin-song-go').onclick = async function(){
   var artist = document.getElementById('admin-song-artist').value.trim();
   var title = document.getElementById('admin-song-title').value.trim();
   var kind = document.getElementById('admin-song-kind').value;
-  var msgEl = document.getElementById('admin-song-msg');
-  if(!artist || !title){
-    msgEl.textContent = 'Give both an artist and a title.';
-    msgEl.className = 'admin-song-msg error'; msgEl.style.display = '';
-    return;
-  }
-  msgEl.textContent = kind === 'album' ? 'Looking up the album…' : 'Looking up the song…';
-  msgEl.className = 'admin-song-msg'; msgEl.style.display = '';
-  var data = await adminCall(
-    { mode: kind, artist: artist, title: title },
-    kind === 'album' ? 'Looking up the album…' : 'Looking up the song…'
-  );
-  if(!data){ msgEl.style.display = 'none'; return; }
+  var logEl = document.getElementById('admin-song-msg');
+  if(!artist || !title){ adminSetMsg(logEl, 'Give both an artist and a title.', true); return; }
+  var working = kind === 'album' ? 'Looking up the album…' : 'Looking up the song…';
+  var data = await adminCall({ mode: kind, artist: artist, title: title }, working, logEl);
+  if(!data){ adminSetMsg(logEl, '', false); return; }
   var msg = 'Added ' + (data.songs || 0) + ' song' + ((data.songs === 1) ? '' : 's')
           + ' and ' + (data.lyric_lines || 0) + ' lyric exercise' + ((data.lyric_lines === 1) ? '' : 's') + '.';
   if(data.errors && data.errors.length) msg += ' Skipped: ' + data.errors.slice(0, 4).join(' | ');
-  msgEl.textContent = msg;
-  msgEl.className = 'admin-song-msg ' + (data.songs > 0 ? 'ok' : 'error');
+  adminSetMsg(logEl, msg, data.songs === 0);
 };
 document.getElementById('admin-book-go').onclick = async function(){
+  var logEl = document.getElementById('admin-log-books');
   var id = document.getElementById('admin-books').value;
-  if(!id){ document.getElementById('admin-log').textContent = 'No books on the shelf yet.'; return; }
-  adminReport(await adminCall({ mode: 'reuse', document_id: id }, 'Reading a passage and generating…'));
+  if(!id){ adminSetMsg(logEl, 'No books on the shelf yet.', true); return; }
+  adminReport(await adminCall({ mode: 'reuse', document_id: id }, 'Reading a passage and generating…', logEl), logEl);
 };
 document.getElementById('admin-reuse').onclick = async function(){
+  var logEl = document.getElementById('admin-log-reuse');
   var id = document.getElementById('admin-docs').value;
-  if(!id){ document.getElementById('admin-log').textContent = 'Nothing saved to generate from yet.'; return; }
-  adminReport(await adminCall({ mode: 'reuse', document_id: id }, 'Generating from saved text…'));
+  if(!id){ adminSetMsg(logEl, 'Nothing saved to generate from yet.', true); return; }
+  adminReport(await adminCall({ mode: 'reuse', document_id: id }, 'Generating from saved text…', logEl), logEl);
 };
 if(ebSB){
   document.getElementById('auth-signin').onclick = async function(){

@@ -28,6 +28,7 @@ const argv = process.argv.slice(2);
 const flag = (n, d) => { const i = argv.indexOf('--' + n); return i >= 0 && argv[i+1] ? argv[i+1] : d; };
 const LIMIT = parseInt(flag('limit', '500'), 10) || 500;
 const DELAY = Math.max(300, parseInt(flag('delay', '600'), 10) || 600);
+const FORCE = argv.includes('--force'); // overwrite existing start_ms
 
 const db = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, { auth: { persistSession: false } });
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -117,13 +118,11 @@ function findTimestamp(index, line) {
   return null;
 }
 
-// Fetch exercises that lack start_ms, grouped by musixmatch_track_id
-const { data: rows, error } = await db
-  .from('exercises')
-  .select('id, payload, songs(musixmatch_track_id)')
-  .eq('type', 'lyrics')
-  .is('payload->start_ms', null)
-  .limit(LIMIT);
+// Fetch exercises, grouped by musixmatch_track_id.
+// --force overwrites existing start_ms; default only fills missing ones.
+let q = db.from('exercises').select('id, payload, songs(musixmatch_track_id)').eq('type', 'lyrics');
+if (!FORCE) q = q.is('payload->start_ms', null);
+const { data: rows, error } = await q.limit(LIMIT);
 
 if (error) { console.error('DB error:', error.message); process.exit(1); }
 if (!rows || !rows.length) { console.log('Nothing to backfill.'); process.exit(0); }
