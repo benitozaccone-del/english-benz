@@ -1780,44 +1780,51 @@ async function lyricsShowArtistPicker(){
   } catch(e){ body.innerHTML = '<p class="weak">Could not load artists.</p>'; }
 }
 
+function lyricsLeastSeenSort(rows){
+  // Shuffle first so ties are broken randomly, then stable-sort by times_seen.
+  // presentations join returns [] (never seen) or [{times_seen:N}] for current user (RLS-filtered).
+  rows.sort(function(){ return Math.random() - 0.5; });
+  rows.sort(function(a, b){
+    var sa = (a.presentations && a.presentations[0]) ? a.presentations[0].times_seen : 0;
+    var sb = (b.presentations && b.presentations[0]) ? b.presentations[0].times_seen : 0;
+    return sa - sb;
+  });
+  return rows;
+}
+
+function lyricsMapRow(row){
+  var q = Object.assign({}, row.payload);
+  q._id = row.id;
+  if(row.songs && row.songs.year && !q.year) q.year = row.songs.year;
+  return q;
+}
+
 async function lyricsFetchByArtist(artist, n){
   if(!ebCloud()) return [];
   try {
     var r = await ebSB.from('exercises')
-      .select('id, payload, songs(year)')
+      .select('id, payload, songs(year), presentations(times_seen)')
       .eq('type', 'lyrics')
       .eq('source', artist)
       .limit(Math.min((n || LYRICS_BATCH_SIZE) * 6, 60));
     if(r.error || !r.data || !r.data.length) return [];
-    var shuffled = r.data.slice().sort(function(){ return Math.random() - 0.5; });
-    return shuffled.slice(0, n || LYRICS_BATCH_SIZE).map(function(row){
-      var q = Object.assign({}, row.payload);
-      q._id = row.id;
-      if(row.songs?.year && !q.year) q.year = row.songs.year;
-      return q;
-    });
+    return lyricsLeastSeenSort(r.data).slice(0, n || LYRICS_BATCH_SIZE).map(lyricsMapRow);
   } catch(e){ return []; }
 }
 
 async function lyricsFetchByDecade(decade, n){
   if(!ebCloud()) return [];
-  var startYear = decade; // full start year, e.g. 1980
+  var startYear = decade;
   var endYear = startYear + 9;
   try {
     var r = await ebSB.from('exercises')
-      .select('id, payload, songs!inner(year)')
+      .select('id, payload, songs!inner(year), presentations(times_seen)')
       .eq('type', 'lyrics')
       .gte('songs.year', startYear)
       .lte('songs.year', endYear)
       .limit(Math.min((n || LYRICS_BATCH_SIZE) * 6, 60));
     if(r.error || !r.data || !r.data.length) return [];
-    var shuffled = r.data.slice().sort(function(){ return Math.random() - 0.5; });
-    return shuffled.slice(0, n || LYRICS_BATCH_SIZE).map(function(row){
-      var q = Object.assign({}, row.payload);
-      q._id = row.id;
-      if(row.songs?.year && !q.year) q.year = row.songs.year;
-      return q;
-    });
+    return lyricsLeastSeenSort(r.data).slice(0, n || LYRICS_BATCH_SIZE).map(lyricsMapRow);
   } catch(e){ return []; }
 }
 async function lyricsFetchBatch(n){
