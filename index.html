@@ -370,9 +370,16 @@
         <button class="menu-btn variant-btn" data-mode="exgame">
           <div>
             <div class="title">Everyday expressions</div>
-            <div class="sub">Match 196 high-frequency idioms and fixed phrases to their meaning</div>
+            <div class="sub">Read the expression — pick what it means</div>
           </div>
           <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+        </button>
+        <button class="menu-btn variant-btn" data-mode="exreverse">
+          <div>
+            <div class="title">Find the expression</div>
+            <div class="sub">Read what you want to say — pick the right expression</div>
+          </div>
+          <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M8 10h8M8 14h4"/></svg></span>
         </button>
       </div>
     </div>
@@ -1272,6 +1279,7 @@ var EX_PACK = [
   {"expr":"That works.","meaning":"That solution is acceptable.","example":"Thursday afternoon? That works.","alternatives":"Works for me.","variety":"UK/US","level":"B1","freq":5,"situation":"Planning"}
 ];
 var exStats = {}, exCooldown = {}, exResults = [], exScore = 0, exTotal = 0, exAnswered = false;
+var exMode = 'forward'; // 'forward' = show expression → pick meaning; 'reverse' = show meaning → pick expression
 var EX_STATS_KEY = 'ex-stats';
 
 function exStatFor(expr){ if(!exStats[expr]) exStats[expr]={correct:0,wrong:0}; return exStats[expr]; }
@@ -1302,8 +1310,13 @@ function exDistractors(correct){
   var pool=EX_PACK.filter(function(e){return e.expr!==correct;});
   return shuffle(pool).slice(0,3).map(function(e){return e.meaning;});
 }
+function exDistractorsExpr(correct){
+  var pool=EX_PACK.filter(function(e){return e.expr!==correct;});
+  return shuffle(pool).slice(0,3).map(function(e){return e.expr;});
+}
 
-async function exInit(){
+async function exInit(mode){
+  exMode=mode||'forward';
   exScore=0;exTotal=0;exResults=[];exCooldown={};
   try{var res=await window.storage.get(EX_STATS_KEY,false);exStats=res?JSON.parse(res.value):{};}catch(e){exStats={};}
   showView('view-ex');
@@ -1321,15 +1334,16 @@ function exShowWeak(){
 function exLoad(){
   exAnswered=false;
   var entry=exPick();
+  var rev=(exMode==='reverse');
   document.getElementById('ex-round').textContent='Question '+(exTotal+1);
   document.getElementById('ex-score').textContent='Score: '+exScore;
   document.getElementById('ex-tag').textContent=entry.situation+' · '+entry.level;
-  document.getElementById('ex-expression').textContent='"'+entry.expr+'"';
+  document.getElementById('ex-expression').textContent=rev?entry.meaning:('"'+entry.expr+'"');
   document.getElementById('ex-feedback').textContent='';
   document.getElementById('ex-reveal').style.display='none';
   document.getElementById('ex-next').style.display='none';
   renderDots('ex-dots',exResults,false);
-  var opts=[entry.meaning].concat(exDistractors(entry.expr));
+  var opts=rev?[entry.expr].concat(exDistractorsExpr(entry.expr)):[entry.meaning].concat(exDistractors(entry.expr));
   shuffle(opts);
   var el=document.getElementById('ex-options');el.innerHTML='';
   opts.forEach(function(opt){
@@ -1342,7 +1356,9 @@ function exLoad(){
 
 async function exAnswer(entry,opt,btn){
   if(exAnswered)return;exAnswered=true;exTotal++;
-  var ok=(opt===entry.meaning);if(ok)exScore++;
+  var rev=(exMode==='reverse');
+  var correct=rev?entry.expr:entry.meaning;
+  var ok=(opt===correct);if(ok)exScore++;
   exResults.push(ok);renderDots('ex-dots',exResults,false);
   var st=exStatFor(entry.expr);
   if(ok){st.correct++;}else{st.wrong++;exCooldown[entry.expr]=exCooldownFor(entry);}
@@ -1350,10 +1366,10 @@ async function exAnswer(entry,opt,btn){
   var children=document.getElementById('ex-options').children;
   for(var i=0;i<children.length;i++){
     var b=children[i];b.disabled=true;
-    if(b.textContent===entry.meaning)b.classList.add('correct');else if(b===btn)b.classList.add('wrong');
+    if(b.textContent===correct)b.classList.add('correct');else if(b===btn)b.classList.add('wrong');
   }
   var fb=document.getElementById('ex-feedback');
-  fb.textContent=ok?('Correct — "'+entry.expr+'" means: '+entry.meaning):('Not quite. "'+entry.expr+'" means: '+entry.meaning);
+  fb.textContent=ok?('Correct — "'+entry.expr+'" means: '+entry.meaning):('Not quite — "'+entry.expr+'" means: '+entry.meaning);
   fb.style.color=ok?'#0B7A5B':'#C22C46';
   document.getElementById('ex-example').textContent='"'+entry.example+'"';
   document.getElementById('ex-alternatives').textContent='Also: '+entry.alternatives;
@@ -2540,7 +2556,8 @@ function ebLaunchMode(mode){
   try{ localStorage.setItem('eb-last-mode', mode); }catch(e){}
   if(mode === 'lyrics-auto') lyricsInit('auto');
   else if(mode === 'lyrics-artist') lyricsInit('artist');
-  else if(mode === 'exgame') exInit();
+  else if(mode === 'exgame') exInit('forward');
+  else if(mode === 'exreverse') exInit('reverse');
   else if(PV_MODES[mode]) pvInit(mode);
   else if(mode === 'trB2') trInit('B2');
   else if(mode === 'trC1') trInit('C1');
