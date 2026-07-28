@@ -155,7 +155,11 @@
   /* Each game inherits its family's palette, so the colour you tapped in the
      menu is the colour you keep playing in. Defaults keep any unthemed view
      looking exactly as before. */
-  #view-pv{--accent:#C6F462; --accent-2:#A8E85C; --soft:#F3FCE2; --line:#7CA83A;}
+  #view-pv,#view-ex{--accent:#C6F462; --accent-2:#A8E85C; --soft:#F3FCE2; --line:#7CA83A;}
+  .ex-reveal{margin-top:1rem; padding:0.9rem 1rem; background:var(--soft,#F3FCE2); border-radius:12px; border:1.5px solid var(--line,#7CA83A);}
+  .ex-reveal-example{font-size:15px; font-style:italic; color:#0A0A0A; margin:0 0 0.45rem;}
+  .ex-reveal-alts{font-size:13px; color:#3A5A1A; margin:0 0 0.35rem;}
+  .ex-reveal-meta{font-size:12px; color:#5A5A5A; margin:0; text-transform:uppercase; letter-spacing:0.04em; font-weight:600;}
   #view-tr{--accent:#C9B3FF; --accent-2:#FFB9D8; --soft:#F7F1FF; --line:#8F6FD0;}
   #view-audio{--accent:#FFC9B5; --accent-2:#FFE8A3; --soft:#FFF6EE; --line:#C97A52;}
   #view-lyrics{--accent:#C6F462; --accent-2:#26314A; --soft:#F1F3F8; --line:#26314A;}
@@ -336,8 +340,8 @@
     <div class="menu-group" data-group="pv">
       <button class="menu-btn group-btn" data-group-btn="pv" aria-expanded="false">
         <div>
-          <div class="title">Phrasal verbs</div>
-          <div class="sub">Complete a sentence with the verb that fits</div>
+          <div class="title">Phrasal Verbs &amp; Idioms</div>
+          <div class="sub">Complete a sentence or match an expression to its meaning</div>
         </div>
         <span class="icon-circle chev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
       </button>
@@ -362,6 +366,13 @@
             <div class="sub">Verbs caught in recent articles, in their real sentences</div>
           </div>
           <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h13a2 2 0 0 1 2 2v11a2 2 0 0 0 2-2V8"/><path d="M4 5v13a2 2 0 0 0 2 2h13"/><path d="M8 9h6M8 13h6"/></svg></span>
+        </button>
+        <button class="menu-btn variant-btn" data-mode="exgame">
+          <div>
+            <div class="title">Everyday expressions</div>
+            <div class="sub">Match 196 high-frequency idioms and fixed phrases to their meaning</div>
+          </div>
+          <span class="icon-circle"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
         </button>
       </div>
     </div>
@@ -535,6 +546,25 @@
     <div class="bonus" id="pv-bonus" style="display:none;"></div>
   </div>
   <div class="actions"><button class="reset" id="pv-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="pv-end">End game</button><button class="next" id="pv-next">Next question</button></div></div>
+</div>
+
+<div id="view-ex" style="display:none;">
+  <button class="back-btn" id="ex-back">← Menu</button>
+  <div class="top"><span class="round" id="ex-round">Question 1</span><span class="score" id="ex-score">Score: 0</span></div>
+  <div class="dots" id="ex-dots"></div>
+  <p class="weak" id="ex-weakspots"></p>
+  <div class="card">
+    <div class="card-head"><span class="tag" id="ex-tag"></span></div>
+    <p class="sentence" id="ex-expression"></p>
+    <div class="options" id="ex-options"></div>
+    <p class="feedback" id="ex-feedback"></p>
+    <div class="ex-reveal" id="ex-reveal" style="display:none;">
+      <p class="ex-reveal-example" id="ex-example"></p>
+      <p class="ex-reveal-alts" id="ex-alternatives"></p>
+      <p class="ex-reveal-meta" id="ex-meta"></p>
+    </div>
+  </div>
+  <div class="actions"><button class="reset" id="ex-reset">Reset my stats</button><div class="actions-right"><button class="end-session" id="ex-end">End game</button><button class="next" id="ex-next">Next question</button></div></div>
 </div>
 
 <div id="view-tr" style="display:none;">
@@ -858,7 +888,7 @@ function renderDots(id, results, showCurrent){
     + (showCurrent === false ? '' : '<i class="now"></i>');
 }
 function showView(id){
-  ['view-auth','view-menu','view-admin','view-pv','view-tr','view-stats','view-audio','view-lyrics'].forEach(function(v){ document.getElementById(v).style.display = (v===id) ? 'block' : 'none'; });
+  ['view-auth','view-menu','view-admin','view-pv','view-ex','view-tr','view-stats','view-audio','view-lyrics'].forEach(function(v){ document.getElementById(v).style.display = (v===id) ? 'block' : 'none'; });
   if(id !== 'view-auth') try{ localStorage.setItem('eb-last-view', id); }catch(e){}
 }
 
@@ -1040,6 +1070,302 @@ document.getElementById('pv-back').onclick = function(){ ebReturnToMenu(); };
 document.getElementById('pv-end').onclick = async function(){ await pvSave(); ebReturnToMenu(); };
 
 document.getElementById('pv-reset').onclick = async function(){ pvStats={}; await pvSave(); pvShowWeak(); };
+
+
+/* ---------- Everyday Expressions game ---------- */
+var EX_PACK = [
+  {"expr":"Fair enough","meaning":"I understand and accept your point.","example":"Fair enough, I can see why you made that decision.","alternatives":"I get that / That's fair.","variety":"UK/US","level":"B1","freq":5,"situation":"Agreeing politely"},
+  {"expr":"No worries","meaning":"It's okay / don't worry about it.","example":"Thanks for your help.\" \"No worries!","alternatives":"No problem / You're welcome.","variety":"UK (also common US)","level":"B1","freq":5,"situation":"Casual conversation"},
+  {"expr":"That makes sense","meaning":"I understand your reasoning.","example":"That makes sense now you've explained it.","alternatives":"I get it / I see.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"Exactly","meaning":"I completely agree.","example":"Exactly! That's what I was trying to say.","alternatives":"Absolutely / Right.","variety":"UK/US","level":"B1","freq":5,"situation":"Agreement"},
+  {"expr":"Absolutely","meaning":"Yes, completely.","example":"Absolutely, I'd recommend that.","alternatives":"Definitely / For sure.","variety":"UK/US","level":"B1","freq":5,"situation":"Agreement"},
+  {"expr":"Sounds good","meaning":"I agree with that plan.","example":"Let's meet at seven.\" \"Sounds good.","alternatives":"Perfect / Works for me.","variety":"UK/US","level":"B1","freq":5,"situation":"Making plans"},
+  {"expr":"Works for me","meaning":"I'm happy with that.","example":"Tuesday morning?\" \"Works for me.","alternatives":"Sounds good.","variety":"UK/US","level":"B1","freq":5,"situation":"Making plans"},
+  {"expr":"Good point","meaning":"That's a valid observation.","example":"Good point—I hadn't thought of that.","alternatives":"You're right.","variety":"UK/US","level":"B1","freq":5,"situation":"Discussion"},
+  {"expr":"You've got a point","meaning":"I think you're right.","example":"You've got a point about the budget.","alternatives":"Fair enough.","variety":"UK/US","level":"B2","freq":5,"situation":"Discussion"},
+  {"expr":"I see what you mean","meaning":"I understand your opinion.","example":"I see what you mean, although I disagree.","alternatives":"I get what you're saying.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"I hear you","meaning":"I understand how you feel.","example":"I hear you. It's been a difficult week.","alternatives":"I know what you mean.","variety":"US (common worldwide)","level":"B2","freq":5,"situation":"Empathy"},
+  {"expr":"It depends","meaning":"The answer isn't always the same.","example":"Which is better? It depends.","alternatives":"That varies.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"We'll see","meaning":"Let's wait before deciding.","example":"Will they accept?\" \"We'll see.","alternatives":"Time will tell.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"You never know","meaning":"Anything is possible.","example":"Apply anyway—you never know.","alternatives":"It's worth a try.","variety":"UK/US","level":"B1","freq":5,"situation":"Encouragement"},
+  {"expr":"At least...","meaning":"Looking at the positive side.","example":"At least nobody got hurt.","alternatives":"The good thing is...","variety":"UK/US","level":"B1","freq":5,"situation":"Optimism"},
+  {"expr":"That's the thing","meaning":"Here's the important point.","example":"That's the thing—we don't have enough data.","alternatives":"The problem is...","variety":"UK/US","level":"B2","freq":5,"situation":"Explaining"},
+  {"expr":"That's the point","meaning":"That's exactly what matters.","example":"That's the point I'm trying to make.","alternatives":"Exactly.","variety":"UK/US","level":"B2","freq":5,"situation":"Discussion"},
+  {"expr":"That's not the point","meaning":"You're missing the real issue.","example":"Money isn't the point.","alternatives":"You're missing the point.","variety":"UK/US","level":"B2","freq":5,"situation":"Discussion"},
+  {"expr":"To be honest","meaning":"Speaking frankly.","example":"To be honest, I expected more.","alternatives":"Honestly.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"To be fair","meaning":"Being objective.","example":"To be fair, he warned us.","alternatives":"In fairness.","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"Honestly","meaning":"I'm being sincere.","example":"Honestly, I don't know.","alternatives":"To be honest.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"Actually","meaning":"In fact.","example":"Actually, that's not correct.","alternatives":"As a matter of fact.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"By the way","meaning":"Introducing another topic.","example":"By the way, how's your new job?","alternatives":"Incidentally.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"Anyway","meaning":"Returning to the main topic.","example":"Anyway, where were we?","alternatives":"So...","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"In the end","meaning":"Finally.","example":"In the end, we chose the cheaper option.","alternatives":"Eventually.","variety":"UK/US","level":"B1","freq":5,"situation":"Storytelling"},
+  {"expr":"At the end of the day","meaning":"When everything is considered.","example":"At the end of the day, customers decide.","alternatives":"Ultimately.","variety":"UK/US","level":"B2","freq":5,"situation":"Business"},
+  {"expr":"Long story short","meaning":"Here's the short version.","example":"Long story short, we missed the train.","alternatives":"In short.","variety":"UK/US","level":"B2","freq":5,"situation":"Storytelling"},
+  {"expr":"Believe it or not","meaning":"Surprisingly.","example":"Believe it or not, I've never been to London.","alternatives":"Oddly enough.","variety":"UK/US","level":"B2","freq":4,"situation":"Storytelling"},
+  {"expr":"Guess what?","meaning":"I've got surprising news.","example":"Guess what? I got the job!","alternatives":"You'll never guess.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"Here we go","meaning":"Something is starting.","example":"Here we go, the meeting's about to start.","alternatives":"Let's do this.","variety":"UK/US","level":"B1","freq":5,"situation":"Daily life"},
+  {"expr":"There you go","meaning":"Here it is / that's it.","example":"There you go—that fixes it.","alternatives":"There it is.","variety":"UK/US","level":"B1","freq":5,"situation":"Daily life"},
+  {"expr":"There you have it","meaning":"That's the explanation.","example":"There you have it—the whole story.","alternatives":"That's it.","variety":"UK/US","level":"B2","freq":4,"situation":"Presentations"},
+  {"expr":"That's it","meaning":"That's all / exactly.","example":"That's it! You've got it.","alternatives":"Exactly.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"There you are","meaning":"Finally! / Here you are.","example":"Ah, there you are!","alternatives":"Found you!","variety":"UK","level":"B1","freq":4,"situation":"Daily life"},
+  {"expr":"Good for you","meaning":"I'm happy for your success.","example":"You got promoted? Good for you!","alternatives":"Well done.","variety":"UK/US","level":"B1","freq":5,"situation":"Compliments"},
+  {"expr":"Lucky you","meaning":"You're fortunate.","example":"Two months in Hawaii? Lucky you!","alternatives":"I'm jealous!","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"My bad","meaning":"It was my mistake.","example":"Sorry, my bad.","alternatives":"That's on me.","variety":"US (very common)","level":"B1","freq":5,"situation":"Apologising"},
+  {"expr":"That's on me","meaning":"It was my responsibility.","example":"We missed the deadline. That's on me.","alternatives":"My bad.","variety":"UK/US","level":"B2","freq":5,"situation":"Work"},
+  {"expr":"No big deal","meaning":"It's not important.","example":"Don't worry—it's no big deal.","alternatives":"It's fine.","variety":"UK/US","level":"B1","freq":5,"situation":"Reassurance"},
+  {"expr":"Not really","meaning":"Not exactly.","example":"Did you enjoy it?\" \"Not really.","alternatives":"Not quite.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"I wouldn't say so","meaning":"I don't think so.","example":"Was it expensive?\" \"I wouldn't say so.","alternatives":"Not really.","variety":"UK/US","level":"B2","freq":5,"situation":"Opinion"},
+  {"expr":"I wouldn't go that far","meaning":"That's an exaggeration.","example":"He's the best ever?\" \"I wouldn't go that far.","alternatives":"Maybe not.","variety":"UK/US","level":"C1","freq":4,"situation":"Discussion"},
+  {"expr":"That's true","meaning":"I agree that's correct.","example":"That's true, I hadn't noticed.","alternatives":"You're right.","variety":"UK/US","level":"B1","freq":5,"situation":"Agreement"},
+  {"expr":"Couldn't agree more","meaning":"I completely agree.","example":"Couldn't agree more.","alternatives":"Absolutely.","variety":"UK/US","level":"B2","freq":5,"situation":"Agreement"},
+  {"expr":"I couldn't care less","meaning":"I don't care at all.","example":"Honestly, I couldn't care less.","alternatives":"I don't care.","variety":"UK/US","level":"C1","freq":5,"situation":"Opinion"},
+  {"expr":"It's up to you","meaning":"You decide.","example":"It's up to you where we eat.","alternatives":"Your call.","variety":"UK/US","level":"B1","freq":5,"situation":"Decision"},
+  {"expr":"Your call","meaning":"It's your decision.","example":"We can leave now, but it's your call.","alternatives":"It's up to you.","variety":"US","level":"B2","freq":5,"situation":"Decision"},
+  {"expr":"Why not?","meaning":"There's no reason not to.","example":"Want to grab a coffee?\" \"Why not?","alternatives":"Sure.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"Go for it","meaning":"Do it.","example":"You want to apply? Go for it!","alternatives":"Do it.","variety":"UK/US","level":"B1","freq":5,"situation":"Encouragement"},
+  {"expr":"Fingers crossed","meaning":"I hope it works.","example":"Fingers crossed for tomorrow.","alternatives":"Let's hope.","variety":"UK/US","level":"B1","freq":5,"situation":"Hope"},
+  {"expr":"No way!","meaning":"Expression of surprise or disbelief.","example":"No way! You met Ed Sheeran?","alternatives":"You're kidding! / Seriously?","variety":"UK/US","level":"B1","freq":5,"situation":"Reaction"},
+  {"expr":"You're kidding.","meaning":"I don't believe you.","example":"You sold the company?\" \"You're kidding.","alternatives":"No way!","variety":"UK/US","level":"B1","freq":5,"situation":"Reaction"},
+  {"expr":"Seriously?","meaning":"Really?","example":"Seriously? You finished already?","alternatives":"For real?","variety":"UK/US","level":"B1","freq":5,"situation":"Reaction"},
+  {"expr":"For real?","meaning":"Is that true?","example":"For real? That's amazing.","alternatives":"Seriously?","variety":"US","level":"B1","freq":5,"situation":"Reaction"},
+  {"expr":"I can't believe it.","meaning":"I'm very surprised.","example":"I can't believe it—we won!","alternatives":"Unbelievable.","variety":"UK/US","level":"B1","freq":5,"situation":"Reaction"},
+  {"expr":"What a shame.","meaning":"That's unfortunate.","example":"You can't come? What a shame.","alternatives":"That's too bad.","variety":"UK/US","level":"B1","freq":5,"situation":"Empathy"},
+  {"expr":"That's a shame.","meaning":"That's unfortunate.","example":"You missed the concert? That's a shame.","alternatives":"What a pity.","variety":"UK/US","level":"B1","freq":5,"situation":"Empathy"},
+  {"expr":"What a pity.","meaning":"That's unfortunate.","example":"What a pity we couldn't meet.","alternatives":"That's a shame.","variety":"UK","level":"B1","freq":4,"situation":"Empathy"},
+  {"expr":"That's too bad.","meaning":"That's unfortunate.","example":"The flight was cancelled? That's too bad.","alternatives":"That's a shame.","variety":"US","level":"B1","freq":5,"situation":"Empathy"},
+  {"expr":"Never mind.","meaning":"Don't worry about it.","example":"Sorry I'm late.\" \"Never mind.","alternatives":"It's okay.","variety":"UK/US","level":"B1","freq":5,"situation":"Reassurance"},
+  {"expr":"Don't worry about it.","meaning":"It's not a problem.","example":"Thanks for waiting.\" \"Don't worry about it.","alternatives":"No worries.","variety":"UK/US","level":"B1","freq":5,"situation":"Reassurance"},
+  {"expr":"It's fine.","meaning":"Everything is okay.","example":"Sorry!\" \"It's fine.","alternatives":"No problem.","variety":"UK/US","level":"B1","freq":5,"situation":"Reassurance"},
+  {"expr":"No harm done.","meaning":"Nothing bad happened.","example":"I dropped your pen.\" \"No harm done.","alternatives":"It's okay.","variety":"UK/US","level":"B2","freq":4,"situation":"Reassurance"},
+  {"expr":"That's alright.","meaning":"It's okay.","example":"Sorry!\" \"That's alright.","alternatives":"No worries.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"Never say never.","meaning":"Anything is possible.","example":"He'll never come back.\" \"Never say never.","alternatives":"Anything can happen.","variety":"UK/US","level":"B2","freq":5,"situation":"Advice"},
+  {"expr":"You bet.","meaning":"Certainly!","example":"Can you help?\" \"You bet!","alternatives":"Absolutely.","variety":"US","level":"B1","freq":5,"situation":"Agreement"},
+  {"expr":"Of course.","meaning":"Certainly.","example":"Can I borrow this?\" \"Of course.","alternatives":"Sure.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"Sure thing.","meaning":"Certainly.","example":"Can you send it?\" \"Sure thing.","alternatives":"No problem.","variety":"US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"No chance.","meaning":"Absolutely not.","example":"Will he agree?\" \"No chance.","alternatives":"Absolutely not.","variety":"UK/US","level":"B1","freq":5,"situation":"Opinion"},
+  {"expr":"Not a chance.","meaning":"Absolutely impossible.","example":"Will they lower the price?\" \"Not a chance.","alternatives":"No way.","variety":"UK/US","level":"B2","freq":5,"situation":"Opinion"},
+  {"expr":"I doubt it.","meaning":"I don't think so.","example":"Will it rain?\" \"I doubt it.","alternatives":"Probably not.","variety":"UK/US","level":"B2","freq":5,"situation":"Opinion"},
+  {"expr":"I suppose so.","meaning":"Probably yes.","example":"Is he coming?\" \"I suppose so.","alternatives":"I guess so.","variety":"UK","level":"B2","freq":4,"situation":"Conversation"},
+  {"expr":"I guess so.","meaning":"Probably yes.","example":"Will she accept?\" \"I guess so.","alternatives":"I suppose so.","variety":"US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"I guess.","meaning":"Probably.","example":"Why did he leave?\" \"I guess he was tired.","alternatives":"Probably.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"I don't mind.","meaning":"I'm happy either way.","example":"Italian or Japanese?\" \"I don't mind.","alternatives":"Either is fine.","variety":"UK/US","level":"B1","freq":5,"situation":"Decision"},
+  {"expr":"Either way.","meaning":"In any case.","example":"Either way, we'll learn something.","alternatives":"Anyway.","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"Whatever works.","meaning":"Any solution is fine.","example":"Train or bus?\" \"Whatever works.","alternatives":"Works for me.","variety":"UK/US","level":"B2","freq":5,"situation":"Decision"},
+  {"expr":"That'll do.","meaning":"That's enough.","example":"That'll do, thanks.","alternatives":"That's enough.","variety":"UK","level":"B2","freq":4,"situation":"Daily life"},
+  {"expr":"Close enough.","meaning":"Near enough.","example":"It's not exact, but close enough.","alternatives":"Good enough.","variety":"UK/US","level":"B2","freq":5,"situation":"Daily life"},
+  {"expr":"Good enough.","meaning":"Sufficiently good.","example":"It's not perfect, but it's good enough.","alternatives":"Close enough.","variety":"UK/US","level":"B1","freq":5,"situation":"Work"},
+  {"expr":"That reminds me...","meaning":"Speaking of that...","example":"That reminds me—I need to call Sarah.","alternatives":"By the way.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"Speaking of...","meaning":"Since we're talking about...","example":"Speaking of holidays, have you booked yours?","alternatives":"By the way.","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"Come to think of it...","meaning":"Now that I think about it.","example":"Come to think of it, I've met him before.","alternatives":"Actually...","variety":"UK/US","level":"C1","freq":4,"situation":"Conversation"},
+  {"expr":"If you ask me.","meaning":"In my opinion.","example":"If you ask me, it's overpriced.","alternatives":"Personally.","variety":"UK/US","level":"B2","freq":5,"situation":"Opinion"},
+  {"expr":"As I see it.","meaning":"In my opinion.","example":"As I see it, we have two options.","alternatives":"In my view.","variety":"UK/US","level":"C1","freq":4,"situation":"Opinion"},
+  {"expr":"From my point of view.","meaning":"My opinion is...","example":"From my point of view, quality matters most.","alternatives":"Personally.","variety":"UK/US","level":"B2","freq":5,"situation":"Opinion"},
+  {"expr":"As far as I know.","meaning":"According to what I know.","example":"As far as I know, the meeting is tomorrow.","alternatives":"To my knowledge.","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"To my knowledge.","meaning":"Based on what I know.","example":"To my knowledge, nobody complained.","alternatives":"As far as I know.","variety":"UK/US","level":"C1","freq":4,"situation":"Business"},
+  {"expr":"If I'm not mistaken.","meaning":"If I remember correctly.","example":"If I'm not mistaken, we've met before.","alternatives":"I think...","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"As usual.","meaning":"As normally happens.","example":"He's late, as usual.","alternatives":"Typically.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"Typical!","meaning":"That's exactly what usually happens.","example":"It started raining. Typical!","alternatives":"Of course.","variety":"UK","level":"B2","freq":4,"situation":"Reaction"},
+  {"expr":"Believe me.","meaning":"Trust what I'm saying.","example":"Believe me, it's worth it.","alternatives":"Trust me.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"Trust me.","meaning":"Believe what I say.","example":"Trust me, you'll love it.","alternatives":"Believe me.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"No offence.","meaning":"I don't want to insult you.","example":"No offence, but I preferred the first version.","alternatives":"Don't take this the wrong way.","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"Don't get me wrong.","meaning":"Don't misunderstand me.","example":"Don't get me wrong—I like the idea.","alternatives":"I'm not saying...","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"If you don't mind me asking...","meaning":"Polite introduction to a personal question.","example":"If you don't mind me asking, how old are you?","alternatives":"May I ask...?","variety":"UK/US","level":"B2","freq":5,"situation":"Politeness"},
+  {"expr":"I appreciate it.","meaning":"Thank you, I value your help.","example":"Thanks for your support—I really appreciate it.","alternatives":"Thanks a lot.","variety":"UK/US","level":"B1","freq":5,"situation":"Gratitude"},
+  {"expr":"Much appreciated.","meaning":"Thank you very much.","example":"Your feedback is much appreciated.","alternatives":"Thanks.","variety":"UK/US","level":"B2","freq":5,"situation":"Business"},
+  {"expr":"It is what it is.","meaning":"We have to accept the situation.","example":"The client cancelled. It is what it is.","alternatives":"We can't change it.","variety":"UK/US","level":"B2","freq":5,"situation":"Acceptance"},
+  {"expr":"That's life.","meaning":"Things don't always go as we'd like.","example":"We lost the contract. That's life.","alternatives":"It happens.","variety":"UK/US","level":"B1","freq":5,"situation":"Acceptance"},
+  {"expr":"It happens.","meaning":"These things are normal.","example":"Don't worry—it happens.","alternatives":"That's life.","variety":"UK/US","level":"B1","freq":5,"situation":"Reassurance"},
+  {"expr":"No big surprise.","meaning":"I'm not surprised.","example":"He resigned? No big surprise.","alternatives":"I'm not shocked.","variety":"UK/US","level":"B2","freq":4,"situation":"Reaction"},
+  {"expr":"That figures.","meaning":"That makes perfect sense.","example":"He forgot again? That figures.","alternatives":"I'm not surprised.","variety":"US","level":"C1","freq":5,"situation":"Reaction"},
+  {"expr":"Go figure.","meaning":"That's strange or ironic.","example":"He hates coffee but owns a café. Go figure.","alternatives":"Who knows?","variety":"US","level":"C1","freq":4,"situation":"Reaction"},
+  {"expr":"So far, so good.","meaning":"Everything is going well up to now.","example":"How's the project?\" \"So far, so good.","alternatives":"Can't complain.","variety":"UK/US","level":"B1","freq":5,"situation":"Progress"},
+  {"expr":"Can't complain.","meaning":"Things are going reasonably well.","example":"How are things?\" \"Can't complain.","alternatives":"Pretty good.","variety":"UK/US","level":"B1","freq":5,"situation":"Small talk"},
+  {"expr":"Could be worse.","meaning":"The situation isn't ideal but isn't terrible.","example":"We missed one sale, but it could be worse.","alternatives":"Not too bad.","variety":"UK/US","level":"B1","freq":5,"situation":"Optimism"},
+  {"expr":"Not bad at all.","meaning":"Better than expected.","example":"How was the restaurant?\" \"Not bad at all.","alternatives":"Pretty good.","variety":"UK/US","level":"B1","freq":5,"situation":"Opinion"},
+  {"expr":"More or less.","meaning":"Approximately.","example":"Are you finished?\" \"More or less.","alternatives":"Roughly.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"More or less the same.","meaning":"Almost unchanged.","example":"Business is more or less the same.","alternatives":"About the same.","variety":"UK/US","level":"B1","freq":4,"situation":"Conversation"},
+  {"expr":"That's more like it.","meaning":"Now that's an improvement.","example":"Much better! That's more like it.","alternatives":"Now we're talking.","variety":"UK/US","level":"B2","freq":5,"situation":"Encouragement"},
+  {"expr":"Now we're talking.","meaning":"That's exactly what I wanted.","example":"A four-day weekend? Now we're talking.","alternatives":"That's more like it.","variety":"UK/US","level":"B2","freq":5,"situation":"Enthusiasm"},
+  {"expr":"That's better.","meaning":"An improvement.","example":"You've fixed it. That's better.","alternatives":"Much better.","variety":"UK/US","level":"B1","freq":5,"situation":"Feedback"},
+  {"expr":"Much better.","meaning":"Clearly improved.","example":"This version is much better.","alternatives":"That's better.","variety":"UK/US","level":"B1","freq":5,"situation":"Feedback"},
+  {"expr":"That's more like it.","meaning":"Exactly the improvement I expected.","example":"Now the presentation looks professional. That's more like it.","alternatives":"Now we're talking.","variety":"UK/US","level":"B2","freq":5,"situation":"Feedback"},
+  {"expr":"That's enough for now.","meaning":"Let's stop here.","example":"We've covered the essentials. That's enough for now.","alternatives":"Let's leave it there.","variety":"UK/US","level":"B1","freq":5,"situation":"Meetings"},
+  {"expr":"Let's leave it there.","meaning":"Let's finish the discussion.","example":"We've agreed on the main points. Let's leave it there.","alternatives":"That's enough for now.","variety":"UK/US","level":"B2","freq":5,"situation":"Meetings"},
+  {"expr":"Let's move on.","meaning":"Proceed to the next topic.","example":"Let's move on to sales.","alternatives":"Next item.","variety":"UK/US","level":"B1","freq":5,"situation":"Meetings"},
+  {"expr":"Getting back to...","meaning":"Returning to a previous topic.","example":"Getting back to the budget...","alternatives":"Anyway...","variety":"UK/US","level":"B2","freq":5,"situation":"Meetings"},
+  {"expr":"As I was saying...","meaning":"Continuing after an interruption.","example":"As I was saying, demand increased in June.","alternatives":"Anyway...","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"The point is...","meaning":"Here's the important idea.","example":"The point is we need to act now.","alternatives":"What matters is...","variety":"UK/US","level":"B1","freq":5,"situation":"Explanation"},
+  {"expr":"The thing is...","meaning":"Here's the real issue.","example":"The thing is we don't have enough time.","alternatives":"The point is...","variety":"UK/US","level":"B1","freq":5,"situation":"Explanation"},
+  {"expr":"Here's the thing.","meaning":"Let me explain the key issue.","example":"Here's the thing—we've already committed.","alternatives":"The thing is...","variety":"US","level":"B2","freq":5,"situation":"Explanation"},
+  {"expr":"What I mean is...","meaning":"Let me clarify.","example":"What I mean is we should simplify.","alternatives":"In other words...","variety":"UK/US","level":"B1","freq":5,"situation":"Clarification"},
+  {"expr":"In other words...","meaning":"To explain differently.","example":"In other words, demand is falling.","alternatives":"That is...","variety":"UK/US","level":"B1","freq":5,"situation":"Clarification"},
+  {"expr":"To put it another way...","meaning":"Here's another explanation.","example":"To put it another way, we're spending too much.","alternatives":"In other words.","variety":"UK/US","level":"B2","freq":5,"situation":"Clarification"},
+  {"expr":"What matters is...","meaning":"This is the important part.","example":"What matters is customer satisfaction.","alternatives":"The key thing is...","variety":"UK/US","level":"B1","freq":5,"situation":"Explanation"},
+  {"expr":"The key thing is...","meaning":"The most important aspect is...","example":"The key thing is consistency.","alternatives":"What matters is...","variety":"UK/US","level":"B2","freq":5,"situation":"Explanation"},
+  {"expr":"For now.","meaning":"At the present time.","example":"For now, let's focus on Europe.","alternatives":"At the moment.","variety":"UK/US","level":"B1","freq":5,"situation":"Planning"},
+  {"expr":"For the time being.","meaning":"Temporarily.","example":"For the time being, we'll hire one salesperson.","alternatives":"For now.","variety":"UK/US","level":"B2","freq":5,"situation":"Planning"},
+  {"expr":"At the moment.","meaning":"Right now.","example":"At the moment, we're profitable.","alternatives":"Right now.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"Right now.","meaning":"Immediately.","example":"Right now isn't the best time.","alternatives":"At the moment.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"Sooner or later.","meaning":"Eventually.","example":"Sooner or later they'll notice.","alternatives":"Eventually.","variety":"UK/US","level":"B1","freq":5,"situation":"Time"},
+  {"expr":"In the long run.","meaning":"Over time.","example":"In the long run, quality wins.","alternatives":"Eventually.","variety":"UK/US","level":"B2","freq":5,"situation":"Business"},
+  {"expr":"At first.","meaning":"Initially.","example":"At first I wasn't convinced.","alternatives":"Initially.","variety":"UK/US","level":"B1","freq":5,"situation":"Storytelling"},
+  {"expr":"From then on.","meaning":"Starting from that moment.","example":"From then on, everything changed.","alternatives":"After that.","variety":"UK/US","level":"B2","freq":5,"situation":"Storytelling"},
+  {"expr":"Ever since.","meaning":"From that time until now.","example":"Ever since we met, we've worked together.","alternatives":"Since then.","variety":"UK/US","level":"B2","freq":5,"situation":"Storytelling"},
+  {"expr":"In the first place.","meaning":"Originally / to begin with.","example":"Why did we do it in the first place?","alternatives":"To begin with.","variety":"UK/US","level":"C1","freq":4,"situation":"Discussion"},
+  {"expr":"First things first.","meaning":"Let's deal with the priority.","example":"First things first—we need funding.","alternatives":"Let's start with...","variety":"UK/US","level":"B2","freq":5,"situation":"Planning"},
+  {"expr":"One thing at a time.","meaning":"Handle tasks sequentially.","example":"One thing at a time.","alternatives":"Let's take it step by step.","variety":"UK/US","level":"B1","freq":5,"situation":"Advice"},
+  {"expr":"Step by step.","meaning":"Gradually.","example":"We'll improve step by step.","alternatives":"Little by little.","variety":"UK/US","level":"B1","freq":5,"situation":"Advice"},
+  {"expr":"Little by little.","meaning":"Gradually.","example":"Little by little, confidence grows.","alternatives":"Step by step.","variety":"UK/US","level":"B1","freq":5,"situation":"Advice"},
+  {"expr":"All of a sudden.","meaning":"Unexpectedly.","example":"All of a sudden, demand doubled.","alternatives":"Suddenly.","variety":"UK/US","level":"B2","freq":5,"situation":"Storytelling"},
+  {"expr":"From time to time.","meaning":"Occasionally.","example":"I work from home from time to time.","alternatives":"Now and then.","variety":"UK/US","level":"B1","freq":5,"situation":"Time"},
+  {"expr":"Every now and then.","meaning":"Occasionally.","example":"We still meet every now and then.","alternatives":"From time to time.","variety":"UK/US","level":"B1","freq":5,"situation":"Time"},
+  {"expr":"Soon enough.","meaning":"Before long.","example":"You'll understand soon enough.","alternatives":"Before long.","variety":"UK/US","level":"B2","freq":4,"situation":"Time"},
+  {"expr":"Before long.","meaning":"Quite soon.","example":"Before long, sales recovered.","alternatives":"Soon enough.","variety":"UK/US","level":"B2","freq":4,"situation":"Time"},
+  {"expr":"That said...","meaning":"Despite what I've just said...","example":"The proposal is expensive. That said, it offers excellent value.","alternatives":"Having said that...","variety":"UK/US","level":"B2","freq":5,"situation":"Discussion"},
+  {"expr":"Having said that...","meaning":"Introducing a contrasting point.","example":"I like the idea. Having said that, we need more data.","alternatives":"That said...","variety":"UK/US","level":"B2","freq":5,"situation":"Discussion"},
+  {"expr":"Mind you...","meaning":"However, remember that...","example":"It's a good restaurant. Mind you, it's expensive.","alternatives":"Then again...","variety":"UK","level":"C1","freq":4,"situation":"Conversation"},
+  {"expr":"Then again...","meaning":"Looking at it from another angle.","example":"We could wait. Then again, prices may rise.","alternatives":"On the other hand...","variety":"UK/US","level":"B2","freq":5,"situation":"Discussion"},
+  {"expr":"On second thought...","meaning":"After reconsidering.","example":"On second thought, let's postpone the launch.","alternatives":"Actually...","variety":"UK/US","level":"B2","freq":5,"situation":"Decision-making"},
+  {"expr":"Come to think of it...","meaning":"Now that I think about it.","example":"Come to think of it, we've worked together before.","alternatives":"Actually...","variety":"UK/US","level":"C1","freq":4,"situation":"Conversation"},
+  {"expr":"For that matter...","meaning":"And the same is true of...","example":"I don't like coffee—or tea, for that matter.","alternatives":"In fact...","variety":"UK/US","level":"C1","freq":3,"situation":"Conversation"},
+  {"expr":"As a matter of fact...","meaning":"In fact.","example":"As a matter of fact, we've already signed.","alternatives":"Actually...","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"Needless to say...","meaning":"Obviously.","example":"Needless to say, customer trust is essential.","alternatives":"Obviously...","variety":"UK/US","level":"C1","freq":4,"situation":"Presentation"},
+  {"expr":"Needless to say, ...","meaning":"Without needing further explanation.","example":"Needless to say, safety comes first.","alternatives":"Of course...","variety":"UK/US","level":"C1","freq":4,"situation":"Presentation"},
+  {"expr":"More importantly...","meaning":"The key point is...","example":"More importantly, the solution scales.","alternatives":"Most importantly...","variety":"UK/US","level":"B2","freq":5,"situation":"Presentation"},
+  {"expr":"On the other hand...","meaning":"Looking at the opposite side.","example":"Sales increased. On the other hand, margins fell.","alternatives":"Conversely...","variety":"UK/US","level":"B2","freq":5,"situation":"Discussion"},
+  {"expr":"For one thing...","meaning":"One reason is...","example":"For one thing, it's cheaper.","alternatives":"First of all...","variety":"UK/US","level":"B2","freq":4,"situation":"Explanation"},
+  {"expr":"If anything...","meaning":"The opposite is true.","example":"If anything, demand is increasing.","alternatives":"Actually...","variety":"UK/US","level":"C1","freq":4,"situation":"Discussion"},
+  {"expr":"At least not yet.","meaning":"Not at the present time.","example":"We're not hiring—at least not yet.","alternatives":"Not for now.","variety":"UK/US","level":"B2","freq":5,"situation":"Business"},
+  {"expr":"For once.","meaning":"This one time.","example":"For once, traffic was light.","alternatives":"Just this once.","variety":"UK/US","level":"B2","freq":4,"situation":"Conversation"},
+  {"expr":"By all means.","meaning":"Certainly.","example":"Can I join?\" \"By all means.","alternatives":"Of course.","variety":"UK/US","level":"B2","freq":5,"situation":"Politeness"},
+  {"expr":"Feel free to...","meaning":"You are welcome to...","example":"Feel free to ask questions.","alternatives":"Don't hesitate to...","variety":"UK/US","level":"B1","freq":5,"situation":"Business"},
+  {"expr":"Don't hesitate to...","meaning":"Do it confidently.","example":"Don't hesitate to contact me.","alternatives":"Feel free to...","variety":"UK/US","level":"B2","freq":5,"situation":"Business"},
+  {"expr":"Take your time.","meaning":"There's no hurry.","example":"Take your time—we're not in a rush.","alternatives":"No rush.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"No rush.","meaning":"There's plenty of time.","example":"No rush, send it tomorrow.","alternatives":"Take your time.","variety":"UK/US","level":"B1","freq":5,"situation":"Business"},
+  {"expr":"Whenever you're ready.","meaning":"Whenever it suits you.","example":"Whenever you're ready, we'll begin.","alternatives":"Take your time.","variety":"UK/US","level":"B1","freq":5,"situation":"Meetings"},
+  {"expr":"Go ahead.","meaning":"You have permission.","example":"Go ahead, I'm listening.","alternatives":"Feel free.","variety":"UK/US","level":"B1","freq":5,"situation":"Conversation"},
+  {"expr":"Be my guest.","meaning":"Please do.","example":"Can I use your charger?\" \"Be my guest.","alternatives":"Go ahead.","variety":"UK/US","level":"B2","freq":4,"situation":"Conversation"},
+  {"expr":"After you.","meaning":"Please go first.","example":"After you.","alternatives":"Go ahead.","variety":"UK/US","level":"B1","freq":5,"situation":"Politeness"},
+  {"expr":"I'll keep that in mind.","meaning":"I'll remember your advice.","example":"That's useful. I'll keep that in mind.","alternatives":"I'll remember that.","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"That's a good question.","meaning":"That's worth thinking about.","example":"That's a good question. Let me think.","alternatives":"Interesting question.","variety":"UK/US","level":"B1","freq":5,"situation":"Meetings"},
+  {"expr":"That's a good point.","meaning":"That's an insightful observation.","example":"That's a good point—we should consider it.","alternatives":"You're right.","variety":"UK/US","level":"B1","freq":5,"situation":"Meetings"},
+  {"expr":"I'm glad you mentioned that.","meaning":"I'm happy you brought it up.","example":"I'm glad you mentioned that because...","alternatives":"Good point.","variety":"UK/US","level":"B2","freq":5,"situation":"Meetings"},
+  {"expr":"Funny you should say that.","meaning":"Interestingly, I was thinking the same.","example":"Funny you should say that—I was just about to call.","alternatives":"That's funny.","variety":"UK","level":"C1","freq":4,"situation":"Conversation"},
+  {"expr":"I was just about to...","meaning":"I was going to do it.","example":"I was just about to email you.","alternatives":"I was going to...","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"Just so you know...","meaning":"For your information.","example":"Just so you know, the deadline changed.","alternatives":"FYI...","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"For what it's worth...","meaning":"My opinion may or may not help.","example":"For what it's worth, I'd accept the offer.","alternatives":"Personally...","variety":"UK/US","level":"B2","freq":5,"situation":"Advice"},
+  {"expr":"If I were you...","meaning":"Giving advice.","example":"If I were you, I'd wait.","alternatives":"My advice would be...","variety":"UK/US","level":"B1","freq":5,"situation":"Advice"},
+  {"expr":"You might want to...","meaning":"A polite suggestion.","example":"You might want to check the numbers.","alternatives":"I'd suggest...","variety":"UK/US","level":"B2","freq":5,"situation":"Advice"},
+  {"expr":"It's worth...","meaning":"It deserves consideration.","example":"It's worth trying.","alternatives":"It's a good idea to...","variety":"UK/US","level":"B1","freq":5,"situation":"Advice"},
+  {"expr":"It's worth a try.","meaning":"There's nothing to lose.","example":"Apply anyway—it's worth a try.","alternatives":"You never know.","variety":"UK/US","level":"B1","freq":5,"situation":"Encouragement"},
+  {"expr":"It's worth keeping in mind.","meaning":"Remember this.","example":"It's worth keeping in mind that lead times vary.","alternatives":"Bear in mind...","variety":"UK/US","level":"B2","freq":5,"situation":"Business"},
+  {"expr":"Bear in mind...","meaning":"Remember this important point.","example":"Bear in mind that prices change quickly.","alternatives":"Keep in mind...","variety":"UK/US","level":"B2","freq":5,"situation":"Business"},
+  {"expr":"Keep in mind...","meaning":"Remember this.","example":"Keep in mind that demand is seasonal.","alternatives":"Bear in mind...","variety":"UK/US","level":"B1","freq":5,"situation":"Business"},
+  {"expr":"That rings a bell.","meaning":"It sounds familiar.","example":"His name rings a bell.","alternatives":"Sounds familiar.","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"It doesn't ring a bell.","meaning":"I don't recognise it.","example":"That company doesn't ring a bell.","alternatives":"Never heard of it.","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"Now that you mention it...","meaning":"Thinking about what you said...","example":"Now that you mention it, I remember.","alternatives":"Come to think of it...","variety":"UK/US","level":"B2","freq":5,"situation":"Conversation"},
+  {"expr":"No wonder.","meaning":"It's understandable.","example":"No wonder they're growing so fast.","alternatives":"That makes sense.","variety":"UK/US","level":"B1","freq":5,"situation":"Reaction"},
+  {"expr":"That's the catch.","meaning":"That's the hidden drawback.","example":"The software is free. That's the catch.","alternatives":"Here's the downside.","variety":"UK/US","level":"B2","freq":5,"situation":"Business"},
+  {"expr":"That's the idea.","meaning":"Exactly—that's the intended result.","example":"Yes, that's the idea.","alternatives":"Exactly.","variety":"UK/US","level":"B1","freq":5,"situation":"Agreement"},
+  {"expr":"That does the trick.","meaning":"That solves the problem.","example":"Restarting the server did the trick.","alternatives":"That worked.","variety":"UK/US","level":"C1","freq":4,"situation":"Problem-solving"},
+  {"expr":"That should do it.","meaning":"That should be enough.","example":"One more change should do it.","alternatives":"That'll do.","variety":"UK/US","level":"B2","freq":5,"situation":"Work"},
+  {"expr":"That works.","meaning":"That solution is acceptable.","example":"Thursday afternoon? That works.","alternatives":"Works for me.","variety":"UK/US","level":"B1","freq":5,"situation":"Planning"}
+];
+var exStats = {}, exCooldown = {}, exResults = [], exScore = 0, exTotal = 0, exAnswered = false;
+var EX_STATS_KEY = 'ex-stats';
+
+function exStatFor(expr){ if(!exStats[expr]) exStats[expr]={correct:0,wrong:0}; return exStats[expr]; }
+async function exSave(){ try{ await window.storage.set(EX_STATS_KEY, JSON.stringify(exStats), false); }catch(e){} }
+
+function exCooldownFor(e){
+  var lv={B1:1,B2:2,C1:3,C2:4}[e.level]||2;
+  var ff=Math.max(1,6-e.freq);
+  return Math.min(8,lv*ff);
+}
+
+function exPick(){
+  Object.keys(exCooldown).forEach(function(k){ exCooldown[k]--; if(exCooldown[k]<=0) delete exCooldown[k]; });
+  function w(e,force){
+    if(!force && exCooldown[e.expr]) return 0;
+    var st=exStatFor(e.expr); var att=st.correct+st.wrong; var er=att>0?st.wrong/att:0.5;
+    return 1+er*5+Math.min(st.wrong,3);
+  }
+  var weights=EX_PACK.map(function(e){return w(e,false);});
+  var total=weights.reduce(function(a,b){return a+b;},0);
+  if(!total){weights=EX_PACK.map(function(e){return w(e,true);});total=weights.reduce(function(a,b){return a+b;},0);}
+  var r=Math.random()*total;
+  for(var i=0;i<EX_PACK.length;i++){r-=weights[i];if(r<=0)return EX_PACK[i];}
+  return EX_PACK[EX_PACK.length-1];
+}
+
+function exDistractors(correct){
+  var pool=EX_PACK.filter(function(e){return e.expr!==correct;});
+  return shuffle(pool).slice(0,3).map(function(e){return e.meaning;});
+}
+
+async function exInit(){
+  exScore=0;exTotal=0;exResults=[];exCooldown={};
+  try{var res=await window.storage.get(EX_STATS_KEY,false);exStats=res?JSON.parse(res.value):{};}catch(e){exStats={};}
+  showView('view-ex');
+  exLoad();
+}
+
+function exShowWeak(){
+  var w=EX_PACK.map(function(e){return{expr:e.expr,wrong:exStatFor(e.expr).wrong};})
+    .filter(function(x){return x.wrong>0;}).sort(function(a,b){return b.wrong-a.wrong;}).slice(0,3).map(function(x){return x.expr;});
+  var el=document.getElementById('ex-weakspots');
+  if(w.length) el.innerHTML='Showing up more: <span class="chip">'+w.join('</span><span class="chip">')+'</span>';
+  else el.textContent='196 everyday expressions — B1 to C1. Your progress is saved.';
+}
+
+function exLoad(){
+  exAnswered=false;
+  var entry=exPick();
+  document.getElementById('ex-round').textContent='Question '+(exTotal+1);
+  document.getElementById('ex-score').textContent='Score: '+exScore;
+  document.getElementById('ex-tag').textContent=entry.situation+' · '+entry.level;
+  document.getElementById('ex-expression').textContent='"'+entry.expr+'"';
+  document.getElementById('ex-feedback').textContent='';
+  document.getElementById('ex-reveal').style.display='none';
+  document.getElementById('ex-next').style.display='none';
+  renderDots('ex-dots',exResults,false);
+  var opts=[entry.meaning].concat(exDistractors(entry.expr));
+  shuffle(opts);
+  var el=document.getElementById('ex-options');el.innerHTML='';
+  opts.forEach(function(opt){
+    var btn=document.createElement('button');btn.className='opt';btn.textContent=opt;
+    btn.onclick=function(){exAnswer(entry,opt,btn);};
+    el.appendChild(btn);
+  });
+  exShowWeak();
+}
+
+async function exAnswer(entry,opt,btn){
+  if(exAnswered)return;exAnswered=true;exTotal++;
+  var ok=(opt===entry.meaning);if(ok)exScore++;
+  exResults.push(ok);renderDots('ex-dots',exResults,false);
+  var st=exStatFor(entry.expr);
+  if(ok){st.correct++;}else{st.wrong++;exCooldown[entry.expr]=exCooldownFor(entry);}
+  await exSave();
+  var children=document.getElementById('ex-options').children;
+  for(var i=0;i<children.length;i++){
+    var b=children[i];b.disabled=true;
+    if(b.textContent===entry.meaning)b.classList.add('correct');else if(b===btn)b.classList.add('wrong');
+  }
+  var fb=document.getElementById('ex-feedback');
+  fb.textContent=ok?('Correct — "'+entry.expr+'" means: '+entry.meaning):('Not quite. "'+entry.expr+'" means: '+entry.meaning);
+  fb.style.color=ok?'#0B7A5B':'#C22C46';
+  document.getElementById('ex-example').textContent='"'+entry.example+'"';
+  document.getElementById('ex-alternatives').textContent='Also: '+entry.alternatives;
+  document.getElementById('ex-meta').textContent=entry.situation+' · '+entry.level+' · '+entry.variety;
+  document.getElementById('ex-reveal').style.display='';
+  document.getElementById('ex-score').textContent='Score: '+exScore;
+  document.getElementById('ex-next').style.display='inline-block';
+}
+document.getElementById('ex-next').onclick=exLoad;
+document.getElementById('ex-back').onclick=function(){ebReturnToMenu();};
+document.getElementById('ex-end').onclick=async function(){await exSave();ebReturnToMenu();};
+document.getElementById('ex-reset').onclick=async function(){exStats={};await exSave();exShowWeak();};
 
 /* ---------- translation game state ---------- */
 var TR_STATS_KEY = 'tr-stats';
@@ -2214,6 +2540,7 @@ function ebLaunchMode(mode){
   try{ localStorage.setItem('eb-last-mode', mode); }catch(e){}
   if(mode === 'lyrics-auto') lyricsInit('auto');
   else if(mode === 'lyrics-artist') lyricsInit('artist');
+  else if(mode === 'exgame') exInit();
   else if(PV_MODES[mode]) pvInit(mode);
   else if(mode === 'trB2') trInit('B2');
   else if(mode === 'trC1') trInit('C1');
