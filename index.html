@@ -1343,8 +1343,7 @@ function exLoad(){
   document.getElementById('ex-reveal').style.display='none';
   document.getElementById('ex-next').style.display='none';
   renderDots('ex-dots',exResults,false);
-  var opts=rev?[entry.expr].concat(exDistractorsExpr(entry.expr)):[entry.meaning].concat(exDistractors(entry.expr));
-  shuffle(opts);
+  var opts=shuffle(rev?[entry.expr].concat(exDistractorsExpr(entry.expr)):[entry.meaning].concat(exDistractors(entry.expr)));
   var el=document.getElementById('ex-options');el.innerHTML='';
   opts.forEach(function(opt){
     var btn=document.createElement('button');btn.className='opt';btn.textContent=opt;
